@@ -329,9 +329,9 @@ int battleRun(const u8 *mons, int n, int boss, int backdrop){
   oamHideAll(); winCloseAll();
   const Backdrop *bd = &BACKDROPS[backdrop];
   memcpy16(CHARBLOCK(1), bd->tiles, bd->ntiles * 16);
-  for (int i = 0; i < 16; i++) MEM_PAL_BG[8 * 16 + i] = bd->pal[i];
+  memcpy16(MEM_PAL_BG + 8 * 16, bd->pal, bd->npal * 16);
   u16 *sb = SCREENBLOCK(28);
-  for (int i = 0; i < 32 * 20; i++) sb[i] = bd->map[i] | (8 << 12);
+  for (int i = 0; i < 32 * 20; i++) sb[i] = bd->map[i];
   setScroll(1, 0, 0);
   // nemici
   nen = n;

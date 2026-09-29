@@ -1,20 +1,13 @@
-// anteprime: build/prev-tiles.png, build/prev-chars.png
-import { Img, previewSheet } from './pixel.mjs';
-import { TILES, rgbPal } from './tiles.mjs';
+// anteprima dei personaggi: build/prev-chars.png (eroi e alcuni NPC, 9 fotogrammi ciascuno)
+import { previewSheet } from './pixel.mjs';
 import { characterFrames, characterPalette } from './chars.mjs';
-import { CHARACTERS } from '../../RPG/www/js/data/characters.js';
+import { genMaps, LOOK_LIST } from './gen-maps.mjs';
 
-const items = [];
-for (const [name, t] of Object.entries(TILES)){
-  if (/^water\d+_1$/.test(name)) continue;
-  const img = new Img(16, 16); t.draw(img, 3, 5);
-  items.push({ img, pal:rgbPal(t.pal), opaque:true });
-}
-previewSheet('build/prev-tiles.png', items, 12, 4);
+genMaps();
 const ch = [];
-for (const [id, c] of Object.entries(CHARACTERS)){
-  const pal = characterPalette(c.look, c.color);
-  for (const f of characterFrames(c.look)) ch.push({ img:f, pal });
+for (const l of LOOK_LIST.slice(0, 14)){
+  const pal = characterPalette(l.look, l.color);
+  for (const f of characterFrames(l.look)) ch.push({ img:f, pal, bg:[120, 200, 110] });
 }
-previewSheet('build/prev-chars.png', ch, 9, 4);
-console.log('ok', items.length, 'tile');
+previewSheet('build/prev-chars.png', ch, 9, 4, [128, 200, 112]);
+console.log('ok');

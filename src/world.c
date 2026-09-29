@@ -8,7 +8,8 @@
 #include "menu.h"
 #include <stdlib.h>
 
-#define MAP_SB 28                   // schermata BG1 (32x32 tile, ad anello)
+#define MAP_SB 28                   // schermata BG1 (32x32 tile, ad anello): terreno
+#define TOP_SB 29                   // schermata BG2: tetti e chiome sopra gli sprite
 #define SLOT_TILE(k) (32 + (k) * 8) // tile OBJ per ogni personaggio sulla mappa (un fotogramma 16x32)
 #define MAX_NPC 14
 
@@ -22,13 +23,16 @@ static Win *namePop; static int namePopT;   // cartello col nome della mappa
 
 // ---------- grafica della mappa ----------
 static void putMeta(int mx, int my){
-  u16 *sb = SCREENBLOCK(MAP_SB);
-  int tx = (mx & 15) * 2, ty = (my & 15) * 2;
-  const u16 *m;
-  static const u16 empty[4] = { 0, 0, 0, 0 };
-  if (mx < 0 || my < 0 || mx >= curMap->w || my >= curMap->h) m = empty;
-  else m = &curMap->meta[curMap->cells[my * curMap->w + mx] * 4];
-  sb[ty * 32 + tx] = m[0]; sb[ty * 32 + tx + 1] = m[1]; sb[(ty + 1) * 32 + tx] = m[2]; sb[(ty + 1) * 32 + tx + 1] = m[3];
+  u16 *sb = SCREENBLOCK(MAP_SB), *st = SCREENBLOCK(TOP_SB);
+  int tx = (mx & 15) * 2, ty = (my & 15) * 2, a = ty * 32 + tx;
+  if (mx < 0 || my < 0 || mx >= curMap->w || my >= curMap->h){
+    sb[a] = sb[a + 1] = sb[a + 32] = sb[a + 33] = 0; st[a] = st[a + 1] = st[a + 32] = st[a + 33] = 0;
+    return;
+  }
+  int pitch = curMap->w * 2, o = my * 2 * pitch + mx * 2;
+  const u16 *g = curMap->bg + o;
+  sb[a] = g[0]; sb[a + 1] = g[1]; sb[a + 32] = g[pitch]; sb[a + 33] = g[pitch + 1];
+  if (curMap->top){ const u16 *t = curMap->top + o; st[a] = t[0]; st[a + 1] = t[1]; st[a + 32] = t[pitch]; st[a + 33] = t[pitch + 1]; }
 }
 static void drawView(int force){
   int mx = camX >> 4, my = camY >> 4;
@@ -91,7 +95,7 @@ static void updateCamera(void){
   if (w <= 240) camX = (w - 240) / 2; else { if (camX < 0) camX = 0; if (camX > w - 240) camX = w - 240; }
   if (h <= 160) camY = (h - 160) / 2; else { if (camY < 0) camY = 0; if (camY > h - 160) camY = h - 160; }
   // la schermata ad anello è di 32x32 tile: gli offset vanno presi modulo 256
-  setScroll(1, camX & 255, camY & 255);
+  setScroll(1, camX & 255, camY & 255); setScroll(2, camX & 255, camY & 255);
   drawView(0);
 }
 
@@ -100,7 +104,7 @@ static const Trigger *triggerAt(int x, int y){
   for (int i = 0; i < curMap->ntrig; i++){ const Trigger *t = &curMap->trig[i]; if (t->x == x && t->y == y && (t->hide == 255 || !flagGet(t->hide))) return t; }
   return 0;
 }
-static int attrAt(int x, int y){ if (x < 0 || y < 0 || x >= curMap->w || y >= curMap->h) return MA_BLOCK; return curMap->attr[curMap->cells[y * curMap->w + x]]; }
+static int attrAt(int x, int y){ if (x < 0 || y < 0 || x >= curMap->w || y >= curMap->h) return MA_BLOCK; return curMap->attr[y * curMap->w + x]; }
 static int passable(int x, int y){
   if (attrAt(x, y) & MA_BLOCK) return 0;
   const Trigger *t = triggerAt(x, y);
@@ -120,14 +124,20 @@ static void loadNpcs(void){
   }
 }
 static int mapMusic(void){ return curMap->music; }
+// grafica della mappa: tile in charblock 1, tavolozze 1..npal, terreno su BG1, livello alto su BG2
+static void loadMapGfx(void){
+  memcpy16(CHARBLOCK(1), curMap->tiles, curMap->ntiles * 16);
+  memcpy16(MEM_PAL_BG + 16, curMap->pal, curMap->npal * 16);
+  MEM_PAL_BG[0] = RGB15(1, 1, 3);
+  REG_BGCNT(1) = 2 | (1 << 2) | (MAP_SB << 8);
+  REG_BGCNT(2) = 0 | (1 << 2) | (TOP_SB << 8);   // priorità 0: sopra gli sprite dei personaggi (BG0, il testo, resta davanti)
+  memset16(SCREENBLOCK(TOP_SB), 0, 1024);
+}
+#define MAP_DISPCNT (DCNT_MODE0 | DCNT_BG(0) | DCNT_BG(1) | DCNT_BG(2) | DCNT_OBJ | DCNT_OBJ_1D)
 void worldLoad(int map, int x, int y, int dir){
   curMap = &MAPS[map];
   G.map = map; G.x = x; G.y = y; G.dir = dir;
-  // grafica: tile in charblock 1, tavolozze 1-7
-  memcpy16(CHARBLOCK(1), curMap->tiles, curMap->ntiles * 16);
-  for (int p = 1; p < 8; p++) for (int i = 0; i < 16; i++) MEM_PAL_BG[p * 16 + i] = BG_PALETTES[p][i];
-  MEM_PAL_BG[0] = curMap->flags & MF_INDOOR ? RGB15(1, 1, 3) : BG_PALETTES[2][3];
-  REG_BGCNT(1) = 2 | (1 << 2) | (MAP_SB << 8);
+  loadMapGfx();
   player = (Actor){ x * 16, y * 16, dir, G.hero, 0, 0, 0, 0, 0, 255 };
   loadActorPal(0, G.hero);
   int partner = G.hero == CH_STE ? CH_RIKI : CH_STE;
@@ -143,14 +153,11 @@ void worldLoad(int map, int x, int y, int dir){
   musicPlay(mapMusic());
   if (curMap->flags & MF_TOWN) G.visited |= 1 << (map & 7);
   worldDrawActors();
-  REG_DISPCNT = DCNT_MODE0 | DCNT_BG(0) | DCNT_BG(1) | DCNT_OBJ | DCNT_OBJ_1D;
+  REG_DISPCNT = MAP_DISPCNT;
 }
 void worldRedraw(void){
   namePop = 0; namePopT = 0;
-  memcpy16(CHARBLOCK(1), curMap->tiles, curMap->ntiles * 16);
-  for (int p = 1; p < 8; p++) for (int i = 0; i < 16; i++) MEM_PAL_BG[p * 16 + i] = BG_PALETTES[p][i];
-  MEM_PAL_BG[0] = curMap->flags & MF_INDOOR ? RGB15(1, 1, 3) : BG_PALETTES[2][3];
-  REG_BGCNT(1) = 2 | (1 << 2) | (MAP_SB << 8);
+  loadMapGfx();
   loadActorPal(0, player.look); loadActorPal(1, mate.look);
   for (int i = 0; i < nNpc; i++){ loadActorPal(npcs[i].slot, npcs[i].look); npcs[i].shownFrame = 255; }
   player.shownFrame = mate.shownFrame = 255;
@@ -159,7 +166,7 @@ void worldRedraw(void){
   drawnMX = -99; updateCamera(); drawView(1);
   oamHideAll(); worldDrawActors();
   musicPlay(mapMusic());
-  REG_DISPCNT = DCNT_MODE0 | DCNT_BG(0) | DCNT_BG(1) | DCNT_OBJ | DCNT_OBJ_1D;
+  REG_DISPCNT = MAP_DISPCNT;
   frame();
   if (REG_BLDCNT) fadeIn(10);                     // dopo una battaglia o un menu lo schermo è al buio
 }

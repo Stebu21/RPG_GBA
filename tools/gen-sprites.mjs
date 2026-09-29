@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { Img, rgb15, cArray } from './pixel.mjs';
+import { convertLayers, quantizeTiles } from './gba-convert.mjs';
 import { MONSTERS, MON_IDS, CHARACTERS, CHAR_IDS, cname } from './gen-common.mjs';
 
 const require = createRequire('C:/Users/StefanoBulgheroni/Documents/Stefano/RPG/package.json');
@@ -67,20 +68,36 @@ export async function genSprites(){
       res.mons[id] = [...g.getImageData(0, 0, 64, 64).data];
     }
     for (const [id, c] of Object.entries(chars)){ const cv = document.createElement('canvas'); S.drawPortrait(cv, c); res.portraits[id] = grab(cv, 32, 32); }
-    // titolo: notte sul Sacro Monte, santuario illuminato, scritta dorata
+    // titolo: notte sul Sacro Monte, il lago di Varese sotto la luna, scritta dorata in rilievo
     const T = document.createElement('canvas'); T.width = 240; T.height = 160; const g = T.getContext('2d');
-    const sky = g.createLinearGradient(0, 0, 0, 160); sky.addColorStop(0, '#0b1030'); sky.addColorStop(0.6, '#3a2c68'); sky.addColorStop(1, '#a0507a'); g.fillStyle = sky; g.fillRect(0, 0, 240, 160);
-    let s = 3; const rnd = ()=>((s = (s * 16807) % 2147483647) / 2147483647);
-    for (let i = 0; i < 60; i++){ g.fillStyle = rnd() < 0.3 ? '#fff6c0' : '#c8d0ff'; g.fillRect(rnd() * 240 | 0, rnd() * 90 | 0, 1, 1); }
-    g.fillStyle = '#f8f0c8'; g.beginPath(); g.arc(222, 14, 8, 0, 7); g.fill(); g.fillStyle = '#0b1030'; g.beginPath(); g.arc(218, 12, 7, 0, 7); g.fill();
-    g.fillStyle = '#1c1838'; g.beginPath(); g.moveTo(0, 160); g.lineTo(0, 120); g.lineTo(40, 104); g.lineTo(80, 118); g.lineTo(120, 100); g.lineTo(150, 108); g.lineTo(190, 92); g.lineTo(240, 116); g.lineTo(240, 160); g.fill();
-    g.fillStyle = '#120f26'; g.beginPath(); g.moveTo(0, 160); g.lineTo(0, 138); g.lineTo(60, 128); g.lineTo(110, 140); g.lineTo(170, 126); g.lineTo(240, 138); g.lineTo(240, 160); g.fill();
-    g.fillStyle = '#f0e0b0'; g.fillRect(114, 92, 12, 9); g.fillRect(118, 85, 4, 7); g.fillRect(119, 82, 2, 3); g.fillStyle = '#ffd060'; g.fillRect(118, 95, 4, 6);
+    const sky = g.createLinearGradient(0, 0, 0, 112); sky.addColorStop(0, '#070a24'); sky.addColorStop(0.45, '#241c58'); sky.addColorStop(0.8, '#5a3474'); sky.addColorStop(1, '#b0587a'); g.fillStyle = sky; g.fillRect(0, 0, 240, 160);
+    let s = 7; const rnd = ()=>((s = (s * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 90; i++){ const x = rnd() * 240 | 0, y = rnd() * 96 | 0, big = rnd() < 0.08; g.fillStyle = rnd() < 0.3 ? '#fff4c8' : '#c8d4ff'; g.fillRect(x, y, 1, 1); if (big){ g.globalAlpha = 0.6; g.fillRect(x - 1, y, 3, 1); g.fillRect(x, y - 1, 1, 3); g.globalAlpha = 1; } }
+    // luna con alone
+    g.fillStyle = '#fff6d8'; g.beginPath(); g.arc(224, 13, 7, 0, 7); g.fill(); g.fillStyle = '#e8dcb8'; g.beginPath(); g.arc(222, 11, 1.6, 0, 7); g.arc(226, 16, 1.2, 0, 7); g.fill();
+    // montagne lontane (Campo dei Fiori) con il bordo illuminato dalla luna
+    const ridge = (pts, fill, rim)=>{ g.fillStyle = fill; g.beginPath(); g.moveTo(0, 160); for (const [x, y] of pts) g.lineTo(x, y); g.lineTo(240, 160); g.fill(); if (rim){ g.strokeStyle = rim; g.lineWidth = 1; g.beginPath(); pts.forEach(([x, y], i)=>i ? g.lineTo(x, y + 0.5) : g.moveTo(x, y + 0.5)); g.stroke(); } };
+    ridge([[0, 104], [22, 96], [48, 100], [76, 86], [104, 94], [130, 88], [150, 96], [176, 90], [200, 98], [240, 92]], '#2c2458', '#6c5c9c');
+    // Sacro Monte a destra: colle con il santuario illuminato e le cappelle lungo la salita
+    ridge([[0, 126], [70, 120], [130, 116], [160, 106], [182, 98], [198, 94], [212, 96], [226, 104], [240, 108]], '#1c1840', '#4c4488');
+    g.fillStyle = '#f0e0b0'; g.fillRect(192, 86, 14, 9); g.fillRect(196, 79, 6, 7); g.fillRect(198, 75, 2, 4); g.fillStyle = '#3a2c50'; g.fillRect(192, 86, 14, 1);
+    g.fillStyle = '#ffd060'; g.fillRect(194, 89, 2, 3); g.fillRect(202, 89, 2, 3); g.fillRect(198, 88, 2, 5); g.fillRect(198, 81, 2, 2);
+    for (const [x, y] of [[186, 101], [178, 104], [170, 108], [160, 111], [150, 114], [140, 117]]){ g.fillStyle = '#ffe080'; g.fillRect(x, y, 2, 2); }
+    // lago con il riflesso della luna
+    const lake = g.createLinearGradient(0, 126, 0, 160); lake.addColorStop(0, '#2a2860'); lake.addColorStop(1, '#141638'); g.fillStyle = lake; g.fillRect(0, 128, 240, 32);
+    for (let y = 130; y < 158; y += 3){ const w = 10 + (y - 130) * 0.9; g.fillStyle = y % 2 ? '#e8dcb0' : '#a89cc8'; g.fillRect(224 - w / 2 + ((y * 7) % 5) - 2, y, w * (0.4 + ((y * 13) % 7) / 12), 1); }
+    for (let i = 0; i < 20; i++){ g.fillStyle = '#5a58a0'; g.fillRect(rnd() * 180 | 0, 132 + rnd() * 26 | 0, 4 + rnd() * 10 | 0, 1); }
+    // riva e alberi scuri in primo piano
+    g.fillStyle = '#0c0a1c'; g.beginPath(); g.moveTo(0, 160); g.lineTo(0, 124); for (let x = 0; x <= 72; x += 6) g.lineTo(x, 122 - (x % 12 ? 6 : 12) + (x > 50 ? (x - 50) * 0.5 : 0)); g.lineTo(90, 134); g.lineTo(60, 160); g.fill();
     g.textAlign = 'center';
-    const title = (txt, y, size)=>{ g.font = `bold ${size}px Georgia, serif`; g.lineWidth = 4; g.strokeStyle = '#1a0c10'; g.strokeText(txt, 120, y);
-      const gold = g.createLinearGradient(0, y - size, 0, y); gold.addColorStop(0, '#fff4b0'); gold.addColorStop(0.5, '#f0b030'); gold.addColorStop(1, '#a05010'); g.fillStyle = gold; g.fillText(txt, 120, y); };
-    title('THE MENACE', 36, 22); title('OF ETERNA', 60, 22);
-    g.font = 'italic 11px Georgia, serif'; g.fillStyle = '#e0d0ff'; g.fillText('~ Chronicles of Varese ~', 120, 76);
+    const title = (txt, y, size)=>{
+      g.font = `bold ${size}px Georgia, serif`;
+      g.lineJoin = 'round'; g.lineWidth = 6; g.strokeStyle = '#140818'; g.strokeText(txt, 120, y + 1);
+      g.lineWidth = 3; g.strokeStyle = '#6a3010'; g.strokeText(txt, 120, y);
+      const gold = g.createLinearGradient(0, y - size * 0.8, 0, y); gold.addColorStop(0, '#fffae0'); gold.addColorStop(0.35, '#f8d060'); gold.addColorStop(0.6, '#e09020'); gold.addColorStop(1, '#a85810'); g.fillStyle = gold; g.fillText(txt, 120, y);
+    };
+    title('THE MENACE', 34, 24); title('OF ETERNA', 60, 24);
+    g.font = 'italic bold 11px Georgia, serif'; g.lineWidth = 3; g.strokeStyle = '#140818'; g.strokeText('~ Chronicles of Varese ~', 120, 77); g.fillStyle = '#e8d8ff'; g.fillText('~ Chronicles of Varese ~', 120, 77);
     res.title = [...g.getImageData(0, 0, 240, 160).data];
     return res;
   }, MONSTERS, CHARACTERS);
@@ -98,20 +115,18 @@ export async function genSprites(){
     c += cArray('u16', `PORTRAIT_${cname(id)}`, toTiles(img, 4, 4), 16) + cArray('u16', `PORTRAIT_PAL_${cname(id)}`, pal.map(rgb15));
     preview.push({ img, pal, opaque:true });
   }
-  // titolo: tile 8x8 senza doppioni e mappa 30x20 (32 di larghezza, come la schermata BG)
-  { const { img, pal } = quantize(out.title, 240, 160, false, 14);
-    const tiles = [], idx = new Map(), map = [];
-    for (let ty = 0; ty < 20; ty++) for (let tx = 0; tx < 32; tx++){
-      if (tx >= 30){ map.push(0); continue; }
-      const b = img.tile4(tx, ty), k = Buffer.from(b).toString('hex');
-      if (!idx.has(k)){ idx.set(k, tiles.length); tiles.push(b); }
-      map.push(idx.get(k));
-    }
-    c += cArray('u16', 'TITLE_TILES', tiles.flatMap(b=>{ const o = []; for (let i = 0; i < 32; i += 2) o.push(b[i] | (b[i + 1] << 8)); return o; }), 16);
-    c += `const u16 TITLE_NTILES = ${tiles.length};
-` + cArray('u16', 'TITLE_MAP', map) + cArray('u16', 'TITLE_PAL', pal.map(rgb15));
-    preview.push({ img, pal, opaque:true, title:true });
-    console.log('titolo:', tiles.length, 'tile');
+  // titolo: 60 colori (median cut), poi tile e tavolozze GBA 8..14 come le mappe
+  { const src = new Int32Array(240 * 160); for (let i = 0; i < src.length; i++) src[i] = (out.title[i * 4] << 16) | (out.title[i * 4 + 1] << 8) | out.title[i * 4 + 2];
+    const rgb = quantizeTiles(src, 240, 160, 7);
+    const { img, pal } = quantize(out.title, 240, 160, false, 14);
+    const r = convertLayers([{ f0:rgb, f1:null }], 240, 160, { name:'titolo', maxPals:7, maxTiles:1000 });
+    const map = []; for (let ty = 0; ty < 20; ty++) for (let tx = 0; tx < 32; tx++) map.push(tx < 30 ? (r.maps[0][ty * 30 + tx] & 0x0FFF) | ((((r.maps[0][ty * 30 + tx] >> 12) || 1) + 7) << 12) : 0);
+    c += cArray('u16', 'TITLE_TILES', r.tiles, 16) + `const u16 TITLE_NTILES = ${r.ntiles};
+const u8 TITLE_NPAL = ${r.pals.length};
+` + cArray('u16', 'TITLE_MAP', map);
+    c += cArray('u16', 'TITLE_PAL', r.pals.flatMap(p=>{ const o = [...p]; while (o.length < 16) o.push(0); return o; }));
+    preview.push({ rgb, opaque:true, title:true });
+    console.log('titolo:', r.ntiles, 'tile,', r.pals.length, 'tavolozze');
   }
   return { c, preview };
 }

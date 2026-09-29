@@ -8,13 +8,13 @@
 
 void titleBackground(void){
   memcpy16(CHARBLOCK(1), TITLE_TILES, TITLE_NTILES * 16);
-  for (int i = 0; i < 16; i++) MEM_PAL_BG[8 * 16 + i] = TITLE_PAL[i];
+  memcpy16(MEM_PAL_BG + 8 * 16, TITLE_PAL, TITLE_NPAL * 16);
   u16 *sb = SCREENBLOCK(28);
-  for (int i = 0; i < 32 * 20; i++) sb[i] = TITLE_MAP[i] | (8 << 12);
+  for (int i = 0; i < 32 * 20; i++) sb[i] = TITLE_MAP[i];
   for (int i = 32 * 20; i < 1024; i++) sb[i] = 0;
   REG_BGCNT(1) = 2 | (1 << 2) | (28 << 8);
   setScroll(1, 0, 0);
-  MEM_PAL_BG[0] = TITLE_PAL[1];
+  MEM_PAL_BG[0] = TITLE_PAL[1];                  // fuori dall'immagine: il colore più scuro
 }
 
 // scelta dell'eroe: i due amici affiancati, a grandezza doppia

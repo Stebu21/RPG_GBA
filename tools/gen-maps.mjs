@@ -1,61 +1,13 @@
 // Mappe: raccordi automatici dei tile, set di tile per mappa, attributi, trigger, aspetti degli NPC.
 import { Img, hash2, rgb15, hex, cArray } from './pixel.mjs';
-import { TILES, BG_PALS, PAL_INDEX } from './tiles.mjs';
+import { BG_PALS } from './tiles.mjs';
+import { paintMap, BLOCKED } from './overworld.mjs';
+import { convertLayers } from './gba-convert.mjs';
 import { characterFrames, characterPalette } from './chars.mjs';
 import { HAND_MAPS, MAP_IDS, MAP, NPC, QUEST, EVENT, FLAG, ITEM, ZONE, CHARACTERS, CHAR_IDS, QUESTS, SHOPS, INN_PRICES, cstr } from './gen-common.mjs';
 
-const BLOCKED = new Set(['d', '~', '^', 'T', '#', 'C', 'W', 'M', 'K', 'l', 'Z', 'O', 'H', 'P', ' ', 'G', 'Q', 'E', 'b', 'm', 'U']);
-const BUILD = new Set(['#', 'D', 'C', 'd']);
-const VARIED = new Set(['grass', 'tallgrass', 'flowers', 'path', 'road', 'paving', 'wgrass', 'wtall', 'tree', 'wroad', 'floor', 'rock']);
 export const MUSIC = { title:0, world:1, town:2, dungeon:3, battle:4, boss:5, victory:6, ending:7 };
 export const SHOP_IDS = Object.keys(SHOPS);
-
-// nome del metatile per la casella (x, y) della mappa
-function autotile(m, id, x, y){
-  const at = (i, j)=>{ const r = m.tiles[j]; return !r || i < 0 || i >= r.length ? '' : r[i]; };
-  const c = at(x, y), world = id === 'world', indoor = !!m.indoor || id === 'accademia';
-  // Sacro Monte: il santuario sopra la piazzetta dell'ultimo scontro
-  if (id === 'sacromonte' && x >= 7 && x <= 10 && y <= 1) return y === 0 ? 'croof' + (x === 7 ? 1 : x === 10 ? 2 : 0) : x === 7 || x === 10 ? 'tower' : 'gate';
-  if (indoor){
-    switch (c){
-      case '#': case 'M': return at(x, y + 1) && !'#M'.includes(at(x, y + 1)) && y < m.tiles.length - 1 ? 'iwall' : 'iwalltop';
-      case 'Z': return 'shelf'; case 'l': return 'bed'; case 'O': return 'table'; case 'K': return 'counter'; case 'H': return 'altar';
-      case 'R': case 'D': return 'rug'; case ' ': return 'void';
-      default: return 'floor';
-    }
-  }
-  if (world){
-    switch (c){
-      case '^': return 'wmount'; case 'S': return 'wshrine'; case '=': return 'wroad'; case ',': return 'wtall';
-      case 'T': return 'wtree'; case '~': return 'wwater'; case 'B': return 'wbridge';
-      case '1': case '2': case '3': case '4': case '5': return 'wtown'; case 'A': return 'gate';
-      default: return 'wgrass';
-    }
-  }
-  if (BUILD.has(c)){
-    // edificio: tetto se sotto c'è ancora edificio, facciata sull'ultima riga; estremità a sinistra/destra
-    const side = (BUILD.has(at(x - 1, y)) ? 0 : 1) | (BUILD.has(at(x + 1, y)) ? 0 : 2);
-    let church = false;                       // un blocco che contiene 'C' è una chiesa (tetto di pietra)
-    for (let j = y - 3; j <= y + 3; j++) for (let i = x - 4; i <= x + 4; i++) if (at(i, j) === 'C') church = true;
-    if (c === 'C') return 'church';
-    const below = at(x, y + 1);
-    if (BUILD.has(below)) return (church ? 'croof' : 'roof') + side;
-    if (c === 'D' || c === 'd') return 'door' + side;
-    return ((x + y) % 2 ? 'win' : 'wall') + side;
-  }
-  switch (c){
-    case ',': return 'tallgrass'; case 'F': return 'flowers'; case ':': return 'paving'; case '=': return 'road';
-    case 'T': return 'tree'; case 'B': return 'bridge'; case '^': return 'rock'; case 'E': return 'hedge';
-    case 'P': return 'lamp'; case 'b': return 'bench'; case 'Q': return 'fountain'; case 'U': return 'statue';
-    case 'm': return 'market'; case 'G': return 'gundam'; case 'W': return 'tower'; case 'A': return 'gate';
-    case 'S': return 'gate'; case ' ': return 'void';
-    case '~': {
-      const wat = (i, j)=>'~B'.includes(at(i, j)) || at(i, j) === '';
-      return `water${(wat(x, y - 1) ? 1 : 0) | (wat(x + 1, y) ? 2 : 0) | (wat(x, y + 1) ? 4 : 0) | (wat(x - 1, y) ? 8 : 0)}_0`;
-    }
-    default: return 'grass';
-  }
-}
 
 // ---------- aspetti degli sprite: eroi (dal gioco) e NPC (ricavati dall'id) ----------
 const HAIR = ['#2b1d14', '#4a3020', '#1a1a1a', '#6b4a2a', '#b08050', '#8a8a8a', '#3a2418'];
@@ -73,41 +25,25 @@ export function lookFor(key, color){
 export function genMaps(){
   let c = '';
   const defs = [];
-  let maxTiles = 0;
+  let maxTiles = 0, maxPals = 0;
   for (const id of MAP_IDS){
     const m = HAND_MAPS[id], H = m.tiles.length, W = Math.max(...m.tiles.map(r=>r.length));
-    const metaKeys = [], metaIndex = new Map(), cells = [];
+    const at = (x, y)=>(m.tiles[y] || '')[x] || ' ';
+    // il santuario del Sacro Monte occupa le prime due righe della piazzetta
+    const extraBlock = (x, y)=>id === 'sacromonte' && x >= 7 && x <= 10 && y <= 1;
+    const blockedCells = new Set(); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (extraBlock(x, y)) blockedCells.add(x + ',' + y);
+    const portals = Object.fromEntries((m.triggers || []).filter(t=>t.type === 'portal').map(t=>[t.x + ',' + t.y, t.to.map]));
+    const f0 = paintMap(id, m, 0, { portals, blockedCells }), f1 = paintMap(id, m, 1, { portals, blockedCells });
+    const r = convertLayers([{ f0:f0.ground, f1:f1.ground }, { f0:f0.top, f1:f1.top }], W * 16, H * 16, { name:id, maxPals:15, maxTiles:1024 });
+    maxTiles = Math.max(maxTiles, r.ntiles); maxPals = Math.max(maxPals, r.pals.length);
+    const attr = [];
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++){
-      const name = autotile(m, id, x, y);
-      const v = VARIED.has(name) ? (hash2(x, y, 7) * 4) | 0 : 0;
-      const key = name + '#' + v;
-      if (!metaIndex.has(key)){ metaIndex.set(key, metaKeys.length); metaKeys.push({ key, name, v, ch:m.tiles[y][x] || ' ' }); }
-      cells.push(metaIndex.get(key));
-    }
-    // tile 8x8 senza doppioni; il secondo fotogramma dell'acqua in coda
-    const tiles = [], tIndex = new Map(), meta = [], attr = [], anim = [];
-    const addTile = buf=>{ const k = Buffer.from(buf).toString('hex'); if (!tIndex.has(k)){ tIndex.set(k, tiles.length); tiles.push(buf); } return tIndex.get(k); };
-    const paint = name=>{ const img = new Img(16, 16); TILES[name].draw(img, 0, 0); return img; };
-    for (const mk of metaKeys){
-      const t = TILES[mk.name];
-      if (!t) throw new Error('tile mancante ' + mk.name + ' in ' + id);
-      const img = new Img(16, 16); t.draw(img, mk.v, mk.v * 3 + 1);
-      const pal = PAL_INDEX[t.pal] + 1;              // tavolozza 0 = interfaccia
-      for (const [tx, ty] of [[0, 0], [1, 0], [0, 1], [1, 1]]) meta.push(addTile(img.tile4(tx, ty)) | (pal << 12));
-      let a = BLOCKED.has(mk.ch) || /^(croof|tower|gate)/.test(mk.name) ? 1 : 0;
-      if (mk.ch === ',' && !m.town) a |= 2;
-      if (mk.name.startsWith('water')) a |= 4;
+      const ch = at(x, y);
+      let a = BLOCKED.has(ch) || extraBlock(x, y) ? 1 : 0;
+      if (ch === ',' && !m.town) a |= 2;
+      if (ch === '~') a |= 4;
       attr.push(a);
     }
-    for (const [mi, mk] of metaKeys.entries()){
-      if (!mk.name.startsWith('water')) continue;
-      const f1 = new Img(16, 16); TILES[mk.name.replace('_0', '_1')].draw(f1, mk.v, mk.v * 3 + 1);
-      [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([tx, ty], k)=>{
-        const dst = meta[mi * 4 + k] & 1023, src = tiles.length; tiles.push(f1.tile4(tx, ty)); anim.push(dst, src);
-      });
-    }
-    maxTiles = Math.max(maxTiles, tiles.length);
-    if (tiles.length > 1000) throw new Error(`${id}: troppi tile (${tiles.length})`);
     // zone per casella (mappa del mondo)
     let zones = null;
     if (m.zones){ zones = new Array(W * H).fill(255); for (const z of m.zones) for (let y = z.y; y < z.y + z.h; y++) for (let x = z.x; x < z.x + z.w; x++) if (x < W && y < H) zones[y * W + x] = ZONE[z.zone] ?? 255; }
@@ -127,22 +63,22 @@ export function genMaps(){
       else continue;
       trig.push(e);
     }
-    const n = id.toUpperCase();
-    c += cArray('u8', `CELLS_${n}`, cells);
+    const n = id.toUpperCase(), hasTop = r.maps[1].some(v=>v);
     if (zones) c += cArray('u8', `ZONES_${n}`, zones);
-    c += cArray('u16', `TILES_${n}`, tiles.flatMap(b=>{ const o = []; for (let i = 0; i < 32; i += 2) o.push(b[i] | (b[i + 1] << 8)); return o; }), 16);
-    c += cArray('u16', `META_${n}`, meta, 16) + cArray('u8', `ATTR_${n}`, attr) + (anim.length ? cArray('u16', `ANIM_${n}`, anim) : '');
+    c += cArray('u16', `TILES_${n}`, r.tiles, 16);
+    c += cArray('u16', `BG_${n}`, r.maps[0], 16) + (hasTop ? cArray('u16', `TOP_${n}`, r.maps[1], 16) : '');
+    c += cArray('u16', `PAL_${n}`, r.pals.flatMap(p=>{ const o = [...p]; while (o.length < 16) o.push(0); return o; }), 16);
+    c += cArray('u8', `ATTR_${n}`, attr) + (r.anim.length ? cArray('u16', `ANIM_${n}`, r.anim) : '');
     c += `static const Trigger TRIG_${n}[] = {\n${trig.map(t=>`  {${t.type},${t.x},${t.y},${t.look},${t.a},${t.b},${t.need},${t.hide}}`).join(',\n') || '  {0}'}\n};\n`;
     const indoor = !!m.indoor || id === 'accademia';
     const flags = (m.town ? 1 : 0) | (indoor ? 2 : 0) | (id === 'world' ? 4 : 0);
     const zone = m.zone ? ZONE[m.zone] ?? 255 : 255;
-    defs.push(`  { ${cstr(m.name)}, ${W}, ${H}, ${MUSIC[m.music] ?? 2}, ${zone}, ${flags}, ${indoor ? 0 : 1}, CELLS_${n}, ${zones ? 'ZONES_' + n : 'NULL'}, TILES_${n}, ${tiles.length}, META_${n}, ${metaKeys.length}, ATTR_${n}, ${anim.length ? 'ANIM_' + n : 'NULL'}, ${anim.length / 2}, TRIG_${n}, ${trig.length}, 0 }`);
+    defs.push(`  { ${cstr(m.name)}, ${W}, ${H}, ${MUSIC[m.music] ?? 2}, ${zone}, ${flags}, BG_${n}, ${hasTop ? 'TOP_' + n : 'NULL'}, ${zones ? 'ZONES_' + n : 'NULL'}, TILES_${n}, ${r.ntiles}, PAL_${n}, ${r.pals.length}, ATTR_${n}, ${r.anim.length ? 'ANIM_' + n : 'NULL'}, ${r.anim.length / 2}, TRIG_${n}, ${trig.length}, 0 }`);
   }
   c += `const MapDef MAPS[] = {\n${defs.join(',\n')}\n};\nconst u8 NUM_MAPS = ${MAP_IDS.length};\n`;
-  // tavolozze BG: 0 interfaccia, poi quelle dei tile
-  const pals = [BG_PALS.ui, ...Object.values(BG_PALS)].slice(0, 8);
-  c += `const u16 BG_PALETTES[8][16] = {\n${pals.map(p=>'  {' + p.map(h=>'0x' + rgb15(hex(h)).toString(16)).join(',') + '}').join(',\n')}\n};\n`;
-  console.log('mappe:', MAP_IDS.length, ' tile massimi per mappa:', maxTiles, ' forzieri:', CHESTS.length);
+  // tavolozza BG 0: interfaccia
+  c += `const u16 BG_PALETTES[1][16] = {\n  {${BG_PALS.ui.map(h=>'0x' + rgb15(hex(h)).toString(16)).join(',')}}\n};\n`;
+  console.log('mappe:', MAP_IDS.length, ' tile massimi:', maxTiles, ' tavolozze massime:', maxPals, ' forzieri:', CHESTS.length);
   return c;
 }
 export const CHESTS = [];

@@ -20,19 +20,19 @@ enum { MA_BLOCK = 1, MA_GRASS = 2, MA_WATER = 4 };
 enum { MF_TOWN = 1, MF_INDOOR = 2, MF_WORLD = 4 };
 typedef struct {
   const char *name;
-  u8 w, h, music, zone, flags, bgpal;   // zone: indice in ZONES o 0xFF; bgpal: tavolozza di sfondo
-  const u8 *cells;                      // metatile locale per casella
+  u8 w, h, music, zone, flags;          // zone: indice in ZONES o 0xFF
+  const u16 *bg, *top;                  // voci di schermata (2w x 2h tile): terreno e livello sopra gli sprite (NULL = vuoto)
   const u8 *zones;                      // zona per casella (mappa del mondo), NULL = zone unica
-  const u16 *tiles; u16 ntiles;         // grafica 4bpp (16 halfword per tile)
-  const u16 *meta; u16 nmeta;           // 4 voci di schermata per metatile
-  const u8 *attr;                       // attributi per metatile
-  const u16 *anim; u8 nanim;            // coppie (tile in VRAM, tile del 2° fotogramma in `tiles`)
+  const u16 *tiles; u16 ntiles;         // grafica 4bpp (16 halfword per tile); dopo ntiles i secondi fotogrammi animati
+  const u16 *pal; u8 npal;              // tavolozze BG 1..npal
+  const u8 *attr;                       // attributi per casella
+  const u16 *anim; u16 nanim;           // coppie (tile in VRAM, tile del 2° fotogramma in `tiles`)
   const Trigger *trig; u8 ntrig;
   u8 exitDir;                           // direzione del portale verso la mappa del mondo (per l'obiettivo)
 } MapDef;
 extern const MapDef MAPS[];
 extern const u8 NUM_MAPS;
-extern const u16 BG_PALETTES[8][16];
+extern const u16 BG_PALETTES[1][16];   // tavolozza dell'interfaccia
 
 // ---------- personaggi e sprite ----------
 typedef struct { const u16 *tiles; const u16 *pal; } Look;   // 9 fotogrammi 16x32 (72 tile)
@@ -74,7 +74,7 @@ extern const u8 NUM_MONSTERS;
 typedef struct { const u8 *mon; u8 nmon, min, max, rate; u8 backdrop; } Zone;   // rate in 1/256 per passo
 extern const Zone ZONES[];
 extern const u8 NUM_ZONES;
-typedef struct { const u16 *tiles; u16 ntiles; const u16 *map; const u16 *pal; } Backdrop;   // 30x20 tile
+typedef struct { const u16 *tiles; u16 ntiles; const u16 *map; const u16 *pal; u8 npal; } Backdrop;   // tavolozze BG 8..   // 30x20 tile
 extern const Backdrop BACKDROPS[];
 
 // ---------- oggetti, equipaggiamento, negozi ----------
@@ -117,7 +117,7 @@ extern const Song SONGS[];
 // ---------- interfaccia ----------
 extern const u16 UI_TILES[]; extern const u16 UI_NTILES;
 extern const u16 OBJ_UI_TILES[]; extern const u16 OBJ_UI_PAL[16];
-extern const u16 TITLE_TILES[]; extern const u16 TITLE_NTILES; extern const u16 TITLE_MAP[]; extern const u16 TITLE_PAL[16];
+extern const u16 TITLE_TILES[]; extern const u16 TITLE_NTILES; extern const u8 TITLE_NPAL; extern const u16 TITLE_MAP[]; extern const u16 TITLE_PAL[];   // tavolozze BG 8..
 
 // indici fissi (generati)
 #include "ids.h"

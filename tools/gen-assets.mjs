@@ -7,7 +7,7 @@ import { genData, genIds } from './gen-data.mjs';
 import { genSprites } from './gen-sprites.mjs';
 import { genUI, genBackdrops } from './gen-ui.mjs';
 import { genAudio } from './gen-audio.mjs';
-import { previewSheet } from './pixel.mjs';
+import { previewSheet, writePNG } from './pixel.mjs';
 
 mkdirSync('gen', { recursive:true }); mkdirSync('build', { recursive:true });
 const t0 = Date.now();
@@ -20,5 +20,6 @@ const parts = [
 writeFileSync('gen/assets.c', parts.join('\n'));
 writeFileSync('gen/ids.h', genIds());
 previewSheet('build/prev-sprites.png', sprites.preview.filter(p=>!p.title), 8, 3);
-const title = sprites.preview.find(p=>p.title); if (title) previewSheet('build/prev-title.png', [title], 1, 3);
+const title = sprites.preview.find(p=>p.title);
+if (title){ const rgba = new Uint8Array(240 * 160 * 4); title.rgb.forEach((c, i)=>{ rgba[i * 4] = c >> 16; rgba[i * 4 + 1] = (c >> 8) & 255; rgba[i * 4 + 2] = c & 255; rgba[i * 4 + 3] = 255; }); writePNG('build/prev-title.png', 240, 160, rgba, 3); }
 console.log(`gen/assets.c scritto in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
