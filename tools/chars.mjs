@@ -166,6 +166,51 @@ function decorate(img, look, dir, y0){
     for (let y = 15; y < 22; y++) px(kx + (y > 18 ? (side || up ? -1 : 1) : 0), y, y < 17 ? C.AC : C.X);
   }
   if (look.tattoo && !up){ px(side ? 5 : 2, 16, C.PAD); px(side ? 5 : 2, 17, C.PAD); }
+  const back = (x, y, c)=>{ if (!get(x, y)) px(x, y, c); };          // solo dove c'è sfondo: resta dietro al corpo
+  if (look.outfit === 'fairy'){
+    // ali di luce (dietro), gonnellina a petali, coroncina di fiori, bacchetta con la stella
+    const wing = side ? [[10, 11], [11, 10], [12, 10], [12, 11], [13, 11], [11, 12], [12, 12], [13, 12], [14, 12], [11, 13], [12, 13], [13, 13], [12, 14], [11, 16], [12, 16], [12, 17], [11, 17]]
+      : [[1, 9], [2, 9], [0, 10], [1, 10], [2, 10], [0, 11], [1, 11], [2, 11], [3, 11], [0, 12], [1, 12], [2, 12], [3, 12], [0, 13], [1, 13], [2, 13], [1, 14], [2, 14], [1, 16], [2, 16], [0, 17], [1, 17], [2, 17], [1, 18]];
+    for (const [x, y] of wing){ back(x, y, (x + y) % 3 ? C.X : C.WH); if (!side) back(15 - x, y, (x + y) % 3 ? C.X : C.WH); }
+    if (up) for (const [x, y] of [[4, 13], [5, 13], [3, 14], [4, 14], [11, 13], [10, 13], [12, 14], [11, 14], [4, 16], [11, 16]]) px(x, y, (x + y) % 2 ? C.X : C.WH);
+    for (let y = 19; y < 21; y++) for (let x = side ? 5 : 4; x < (side ? 11 : 12); x++) px(x, y, y === 20 && x % 2 ? C.SHD : x < 6 ? C.SL : C.SH);
+    for (const x of side ? [4, 11] : [3, 12]) back(x, 20, C.SH);
+    for (let x = side ? 4 : 3; x < (side ? 12 : 13); x += 2) px(x, 1, x % 4 === 1 ? C.AC : C.WH);
+    if (!up){ const wx = side ? 3 : 13; for (let y = 13; y < 19; y++) px(wx, y, C.WH); px(wx, 11, C.AC); px(wx - 1, 12, C.AC); px(wx + 1, 12, C.AC); px(wx, 12, C.WH); px(wx, 13, C.AC); }
+  }
+  if (look.outfit === 'smith'){
+    // grembiule di cuoio dal petto alle ginocchia, martello pesante in mano
+    if (!up) for (let y = 14; y < 21; y++) for (let x = side ? 5 : 5; x < (side ? 10 : 11); x++){ const c = get(x, y); if (c && c !== C.SK && c !== C.SKD) px(x, y, y === 14 || x === 5 ? C.X : (x + y) % 7 ? C.X : C.HD); }
+    if (up) for (const x of [5, 10]) for (let y = 13; y < 18; y++) px(x, y, C.X);
+    const hx = side ? 3 : up ? 2 : 13;
+    for (let y = 16; y < 21; y++) px(hx, y, C.HD);
+    for (let x = hx - 1; x <= hx + 1; x++){ px(x, 21, C.AC); px(x, 22, C.AC); }
+  }
+  if (look.outfit === 'bard'){
+    // berretto rosso con la piuma bianca, liuto a tracolla
+    for (let x = side ? 3 : 3; x < (side ? 12 : 13); x++){ px(x, 0, C.AC); if (x > 3 && x < 12) px(x, -1, C.AC); }
+    for (const [x, y] of side ? [[10, -2], [11, -3], [12, -4], [11, -2]] : [[11, -2], [12, -3], [13, -4], [12, -2]]) px(x, y, C.WH);
+    if (up){ for (let y = 13; y < 19; y++) for (let x = 5; x < 11; x++) if (Math.hypot(x - 7.5, (y - 16) * 0.9) < 3.1) px(x, y, (x === 7 || x === 8) && y === 16 ? C.OL : C.X); for (let y = 9; y < 13; y++) px(8, y, C.HD); }
+    else if (side){ for (let y = 9; y < 16; y++) back(11, y, C.HD); for (const [x, y] of [[11, 15], [12, 15], [11, 16], [12, 16], [12, 17], [11, 17]]) back(x, y, C.X); }
+    else { for (let y = 7; y < 13; y++) back(13, y, C.HD); back(14, 6, C.HD); for (let y = 13; y < 18; y++) px(5 + (y - 13), y, C.HD); }
+  }
+  if (look.outfit === 'healer'){
+    // veste bianca lunga, croce rossa sul petto, bastone di frassino con la gemma verde
+    for (let y = 19; y < 22; y++) for (let x = 3; x < 13; x++){ const c = get(x, y); if (c === C.PA || c === C.PAD || (y === 21 && !c && x > 3 && x < 12 && !side)) px(x, y, x > 9 ? C.SHD : C.SH); }
+    if (!up && !side){ px(7, 14, C.AC); px(8, 14, C.AC); px(7, 15, C.AC); px(8, 15, C.AC); px(6, 15, C.AC); px(9, 15, C.AC); px(7, 16, C.AC); px(8, 16, C.AC); }
+    const sx = side ? 3 : up ? 2 : 13;
+    for (let y = 5; y < 23; y++) px(sx, y, C.X);
+    px(sx, 4, C.HL); px(sx, 3, C.HL); px(sx - 1, 4, C.AC); px(sx + 1, 4, C.AC);
+  }
+  if (look.outfit === 'botanist'){
+    // cappello di paglia a tesa larga con nastro verde, grembiule verde, borsa con un germoglio
+    for (let x = 0; x < 16; x++) if (!side || (x > 0 && x < 15)) { px(x, 3, C.X); if (x > 0 && x < 15) px(x, 4, x < 4 ? C.X : C.HD); }
+    for (let y = -2; y < 3; y++) for (let x = 4; x < 12; x++) px(x, y, y === 2 ? C.AC : y === -2 && (x === 4 || x === 11) ? 0 : x < 6 ? C.WH : C.X);
+    if (!up) for (let y = 15; y < 21; y++) for (let x = side ? 5 : 5; x < (side ? 10 : 11); x++){ const c = get(x, y); if (c && c !== C.SK && c !== C.SKD) px(x, y, (x + y) % 5 ? C.AC : C.PAD); }
+    const bx = side ? 10 : up ? 11 : 2;
+    for (let y = 17; y < 20; y++) for (let x = bx; x < bx + 3; x++) px(x, y, y === 17 ? C.HD : C.X);
+    px(bx + 1, 16, C.AC); px(bx + 1, 15, C.AC); px(bx + 2, 15, C.AC);
+  }
 }
 
 // contorno scuro automatico attorno alla sagoma (come negli sprite GBA)
@@ -197,8 +242,17 @@ export function characterFrames(look){
 
 // tavolozza OBJ del personaggio dai colori del gioco web
 const shade = (h, f)=>{ const [r, g, b] = typeof h === 'string' ? hex(h) : h; return f < 0 ? [r * (1 + f), g * (1 + f), b * (1 + f)].map(Math.round) : [r + (255 - r) * f, g + (255 - g) * f, b + (255 - b) * f].map(Math.round); };
+// colori di abito, accessorio (AC) ed extra (X) per ogni mestiere
+const OUTFIT = {
+  fairy:    c=>({ shirt:c, ac:'#ff90c8', x:shade(c, 0.62) }),
+  smith:    ()=>({ shirt:'#4a4440', ac:'#a0a6b0', x:'#7a4a2a' }),
+  bard:     c=>({ shirt:c, ac:'#b02838', x:'#c07838' }),
+  healer:   ()=>({ shirt:'#f0eee6', ac:'#d83030', x:'#c8a068' }),
+  botanist: ()=>({ shirt:'#c0392b', ac:'#3f9a48', x:'#e8c878' }),
+};
 export function characterPalette(look, color){
-  const shirt = look.outfit === 'mage' ? '#4a4068' : look.outfit === 'samurai' ? '#3a3e4e' : color;
+  const of = OUTFIT[look.outfit]?.(color);
+  const shirt = of ? of.shirt : look.outfit === 'mage' ? '#4a4068' : look.outfit === 'samurai' ? '#3a3e4e' : color;
   const pants = look.outfit === 'samurai' ? '#24263a' : look.pants || '#3c4468';
   const skin = look.skin || '#f8c8a0';
   let hair = look.hair || '#3b2c20';
@@ -206,5 +260,6 @@ export function characterPalette(look, color){
   const eye = look.outfit === 'samurai' || !look.eyes ? '#202030' : look.eyes;
   return [[0, 0, 0], [32, 24, 32], hex(skin), shade(skin, -0.2), hex(eye), [248, 248, 248],
     shade(hair, 0.28), hex(hair), shade(hair, -0.4), shade(shirt, 0.3), hex(shirt), shade(shirt, -0.32), hex(pants), shade(pants, -0.3),
-    look.outfit === 'samurai' ? [216, 48, 56] : look.outfit === 'mage' ? hex(color) : [92, 60, 40], look.outfit === 'mage' ? [40, 34, 56] : look.outfit === 'samurai' ? [200, 206, 220] : [110, 72, 44]];
+    of ? hex(of.ac) : look.outfit === 'samurai' ? [216, 48, 56] : look.outfit === 'mage' ? hex(color) : [92, 60, 40],
+    of ? (typeof of.x === 'string' ? hex(of.x) : of.x) : look.outfit === 'mage' ? [40, 34, 56] : look.outfit === 'samurai' ? [200, 206, 220] : [110, 72, 44]];
 }
