@@ -7,7 +7,7 @@ stessa trama, stessi personaggi, mostri, abilità, oggetti e dialoghi, con grafi
 
 ## Giocare
 
-Apri `build/menace.gba` con un emulatore GBA (per esempio mGBA).
+Apri `menace.gba` (copia di `build/menace.gba`) con un emulatore GBA (per esempio mGBA).
 
 | Tasto | Azione |
 |---|---|
