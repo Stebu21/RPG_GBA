@@ -1,0 +1,4 @@
+build/
+*.sav
+*.ss*
+!menace.gba
