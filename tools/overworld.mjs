@@ -325,7 +325,9 @@ export function paintMap(id, m, frame=0, info={}){
     const cols = [[C.fl0, C.fl1], [C.fl2, C.li2], [C.fl3, C.fl5], [C.fl4, C.fl1]];
     for (const [fx, fy, k] of [[3, 3, 0], [11, 4, 1], [7, 9, 2], [2, 12, 1], [13, 12, 0]]){
       const [a, b] = cols[(k + cx + cy) % 4];
-      gset(X + fx, Y + fy - 1, a); gset(X + fx - 1, Y + fy, a); gset(X + fx + 1, Y + fy, a); gset(X + fx, Y + fy + 1, b); gset(X + fx, Y + fy, C.li1);
+      // la corolla ondeggia di un pixel nel secondo fotogramma (a destra o a sinistra, fiore per fiore)
+      const sw = frame ? ((k + cx) % 2 ? 1 : -1) : 0, hx = fx + sw;
+      gset(X + hx, Y + fy - 1, a); gset(X + hx - 1, Y + fy, a); gset(X + hx + 1, Y + fy, a); gset(X + fx, Y + fy + 1, b); gset(X + hx, Y + fy, C.li1);
       gset(X + fx + 1, Y + fy + 1, C.g4); gset(X + fx - 1, Y + fy + 1, C.g3);
     }
   }
