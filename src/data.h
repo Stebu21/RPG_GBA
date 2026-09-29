@@ -7,7 +7,7 @@ extern const u8 FONT_W[256];            // larghezza di ogni glifo
 extern const u16 FONT_ROWS[256][9];     // 9 righe, bit 0 = colonna di sinistra
 
 // ---------- mappe ----------
-enum { T_PORTAL = 1, T_NPC, T_QUEST, T_CHEST, T_DOOREV, T_EVENT, T_SHOP, T_INN, T_HEAL };
+enum { T_PORTAL = 1, T_NPC, T_QUEST, T_CHEST, T_DOOREV, T_EVENT, T_SHOP, T_INN, T_HEAL, T_MOUNT };   // T_MOUNT: a = cavalcatura (1 asino, 2 cavallo)
 typedef struct {
   u8 type, x, y, look;      // look: aspetto dello sprite (NPC, quest)
   u16 a, b;                 // PORTAL: a = mappa, b = x | y << 8; NPC: a = npc; QUEST: a = missione;
@@ -32,6 +32,8 @@ typedef struct {
 } MapDef;
 extern const MapDef MAPS[];
 extern const u8 NUM_MAPS;
+extern const u16 MOUNT_GFX[];          // [cavalcatura 0..1][passo 0..1][8 tile 32x16]
+extern const u16 MOUNT_PAL[][16];
 // mappa consultabile (menu START): immagine della provincia, casella del mondo di ogni luogo, paesi
 // vista 0 = provincia, 1.. = piante dei paesi; pin in pixel dello schermo
 typedef struct { u8 x, y; const char *name; } MapPin;

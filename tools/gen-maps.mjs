@@ -63,6 +63,9 @@ export function genMaps(){
       else continue;
       trig.push(e);
     }
+    // cavalcature da trovare, come nella versione web: l'asino a Castiglione, il cavallo nel castello di Jerago
+    if (id === 'castiglione') trig.push({ type:10, x:22, y:5, look:0, a:1, b:0, need:0, hide:255 });
+    if (id === 'jerago') trig.push({ type:10, x:11, y:5, look:0, a:2, b:0, need:0, hide:255 });
     const n = id.toUpperCase(), hasTop = r.maps[1].some(v=>v);
     if (zones) c += cArray('u8', `ZONES_${n}`, zones);
     c += cArray('u16', `TILES_${n}`, r.tiles, 16);

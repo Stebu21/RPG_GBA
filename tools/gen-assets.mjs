@@ -8,6 +8,7 @@ import { genSprites } from './gen-sprites.mjs';
 import { genUI, genBackdrops } from './gen-ui.mjs';
 import { genAudio } from './gen-audio.mjs';
 import { genTownMap } from './gen-townmap.mjs';
+import { genMounts } from './mounts.mjs';
 import { previewSheet, writePNG } from './pixel.mjs';
 
 mkdirSync('gen', { recursive:true }); mkdirSync('build', { recursive:true });
@@ -16,7 +17,7 @@ const maps = genMaps();                 // registra anche gli aspetti degli NPC
 const sprites = await genSprites();
 const parts = [
   '// Generato da tools/gen-assets.mjs: non modificare a mano.\n#include "data.h"\n#include <stddef.h>\n',
-  fontTables(), maps, genLooks(), sprites.c, genData(), genUI(), genBackdrops(), genAudio(), genTownMap(),
+  fontTables(), maps, genLooks(), sprites.c, genData(), genUI(), genBackdrops(), genAudio(), genTownMap(), genMounts(),
 ];
 writeFileSync('gen/assets.c', parts.join('\n'));
 writeFileSync('gen/ids.h', genIds());

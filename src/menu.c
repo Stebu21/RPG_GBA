@@ -197,7 +197,7 @@ static void townMap(void){
       char b[64]; b[0] = 0;
       if (goal){ strcat(b, "Meta: "); strcat(b, goal->label); } else strcat(b, "La provincia è di nuovo in pace.");
       winText(w, 4, 12, b, TC_TEXT);
-      winText(w, 180, 12, v ? "R: provincia" : home ? "R: paese" : "", TC_GRAY);
+      winText(w, 196, 12, v ? "R: mondo" : home ? "R: paese" : "", TC_GRAY);
     }
     // segnalini: tu (stella che lampeggia), la meta (punto esclamativo che saltella), il cursore sul luogo
     if (hasMe && (t & 16)) oamSet(0, px - 4, py - 4, OBJ_SQUARE, OBJ_SIZE(0), 2 | OBJ_PAL(0)); else oamBuf[0].a0 = OBJ_HIDE;

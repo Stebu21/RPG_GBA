@@ -52,6 +52,8 @@ static const TStep SCRIPT[] = {
   WARP(MAP_VEDANO, 23, 8), HOLD(KEY_UP, 2), W(10), P(KEY_A), W(40), SNAP(24), MASH,
   // la mappa del mondo
   WARP(MAP_WORLD, 24, 10), HOLD(KEY_RIGHT, 40), W(20), SNAP(25),
+  // l'asinello di Castiglione: si prende, si sale in sella (snap 31), SELECT smonta e rimonta (32, 33)
+  WARP(MAP_CASTIGLIONE, 22, 6), P(KEY_A), W(30), MASH, W(20), SNAP(31), P(KEY_SELECT), W(6), SNAP(32), P(KEY_SELECT), W(6), SNAP(33), P(KEY_SELECT), W(6),
   // Castiglione: la Collegiata, poi tre nuovi compagni
   WARP(MAP_CASTIGLIONE, 22, 4), HOLD(KEY_UP, 18), W(30), MASH, W(30), SNAP(19),
   // Jerago e Samarate, poi il Sacro Monte: Eterna e il finale (che nella ROM di prova si ferma)

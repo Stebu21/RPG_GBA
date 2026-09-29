@@ -64,9 +64,41 @@ static void actorFrame(Actor *a){
   a->shownFrame = f;
   memcpy16(OBJ_TILES + SLOT_TILE(a->slot) * 16, LOOKS[a->look].tiles + f * 128, 128);
 }
+// ---------- cavalcature: sprite 32x16 sotto l'eroe (tile 200 e 216, tavolozze OBJ 14 e 13) ----------
+#define OBJ_WIDE (1 << 14)
+#define MOUNT_TILE 200
+#define MOUNT_STATIC_TILE 216
+#define OAM_MOUNT 61
+#define OAM_MOUNT_STATIC 62
+static int mountShown = -1, mountFlip;
+static void mountSprite(int m, int frame, int tile, int pal){
+  memcpy16(OBJ_TILES + tile * 16, MOUNT_GFX + ((m - 1) * 2 + frame) * 128, 128);
+  for (int i = 0; i < 16; i++) MEM_PAL_OBJ[pal * 16 + i] = MOUNT_PAL[m - 1][i];
+}
+static const Trigger *mountTrigger(void){
+  for (int i = 0; i < curMap->ntrig; i++) if (curMap->trig[i].type == T_MOUNT && !((G.mounts >> curMap->trig[i].a) & 1)) return &curMap->trig[i];
+  return 0;
+}
+static void drawMounts(void){
+  if (G.mount){
+    int f = player.moving ? (player.step >> 3) & 1 : 0;
+    if (player.dir == DIR_LEFT) mountFlip = 0; else if (player.dir == DIR_RIGHT) mountFlip = 1;
+    int key = G.mount * 4 + f;
+    if (key != mountShown){ mountShown = key; mountSprite(G.mount, f, MOUNT_TILE, 14); }
+    oamSet(OAM_MOUNT, player.px - 8 - camX, player.py - camY + 2, OBJ_WIDE, OBJ_SIZE(2) | (mountFlip ? OBJ_HFLIP : 0), MOUNT_TILE | OBJ_PAL(14) | OBJ_PRIO(1));
+  } else oamBuf[OAM_MOUNT].a0 = OBJ_HIDE;
+  const Trigger *t = mountTrigger();
+  if (t) oamSet(OAM_MOUNT_STATIC, t->x * 16 - 8 - camX, t->y * 16 - camY, OBJ_WIDE, OBJ_SIZE(2), MOUNT_STATIC_TILE | OBJ_PAL(13) | OBJ_PRIO(1));
+  else oamBuf[OAM_MOUNT_STATIC].a0 = OBJ_HIDE;
+}
+static void loadMountGfx(void){
+  mountShown = -1;
+  const Trigger *t = mountTrigger();
+  if (t) mountSprite(t->a, 0, MOUNT_STATIC_TILE, 13);
+}
 static void drawActor(int oam, Actor *a){
   actorFrame(a);
-  int sx = a->px - camX, sy = a->py - camY - 16;
+  int sx = a->px - camX, sy = a->py - camY - 16 - (a == &player && G.mount ? 6 : 0);
   oamSet(oam, sx, sy, OBJ_TALL, OBJ_SIZE(2) | (a->dir == DIR_RIGHT ? OBJ_HFLIP : 0), SLOT_TILE(a->slot) | OBJ_PAL(a->slot + 1) | OBJ_PRIO(1));
 }
 void worldDrawActors(void){
@@ -86,6 +118,7 @@ void worldDrawActors(void){
     oamSet(o++, t->x * 16 - camX, t->y * 16 - camY, OBJ_SQUARE, OBJ_SIZE(1), (open ? 16 : 12) | OBJ_PAL(0) | OBJ_PRIO(1));
   }
   while (o < 60) oamBuf[o++].a0 = OBJ_HIDE;
+  drawMounts();
 }
 
 // ---------- camera ----------
@@ -109,6 +142,7 @@ static int passable(int x, int y){
   if (attrAt(x, y) & MA_BLOCK) return 0;
   const Trigger *t = triggerAt(x, y);
   if (t && (t->type == T_NPC || t->type == T_QUEST || t->type == T_CHEST)) return 0;
+  if (t && t->type == T_MOUNT && !((G.mounts >> t->a) & 1)) return 0;
   return 1;
 }
 
@@ -137,7 +171,7 @@ static void loadMapGfx(void){
 void worldLoad(int map, int x, int y, int dir){
   curMap = &MAPS[map];
   G.map = map; G.x = x; G.y = y; G.dir = dir;
-  loadMapGfx();
+  loadMapGfx(); loadMountGfx();
   player = (Actor){ x * 16, y * 16, dir, G.hero, 0, 0, 0, 0, 0, 255 };
   loadActorPal(0, G.hero);
   int partner = G.hero == CH_STE ? CH_RIKI : CH_STE;
@@ -157,7 +191,7 @@ void worldLoad(int map, int x, int y, int dir){
 }
 void worldRedraw(void){
   namePop = 0; namePopT = 0;
-  loadMapGfx();
+  loadMapGfx(); loadMountGfx();
   loadActorPal(0, player.look); loadActorPal(1, mate.look);
   for (int i = 0; i < nNpc; i++){ loadActorPal(npcs[i].slot, npcs[i].look); npcs[i].shownFrame = 255; }
   player.shownFrame = mate.shownFrame = 255;
@@ -284,6 +318,13 @@ void worldRun(void){
     if (!player.moving){
       if (keysHit & KEY_START){ sfx(SFX_OK); pauseMenu(); worldRedraw(); continue; }
       if (keysHit & KEY_A){ interact(); frame(); continue; }
+      if (keysHit & KEY_SELECT){                      // SELECT: sali o scendi, poi passa alla cavalcatura successiva
+        int next = G.mount;
+        for (int i = 1; i <= 3; i++){ int c = (G.mount + i) % 3; if (!c || ((G.mounts >> c) & 1)){ next = c; break; } }
+        if (next != G.mount){ G.mount = next; sfx(SFX_OK); worldDrawActors(); }
+        else sfx(SFX_BUMP);
+        frame(); continue;
+      }
       int dir = -1;
       if (keysHeld & KEY_DOWN) dir = DIR_DOWN; else if (keysHeld & KEY_UP) dir = DIR_UP;
       else if (keysHeld & KEY_LEFT) dir = DIR_LEFT; else if (keysHeld & KEY_RIGHT) dir = DIR_RIGHT;
@@ -305,7 +346,8 @@ void worldRun(void){
       } else { player.frame = 0; mate.frame = 0; TEST_IDLE(); }
     }
     if (player.moving){
-      int speed = (keysHeld & KEY_B) ? 2 : 1;       // B tenuto premuto: si corre
+      // B tenuto premuto: si corre; in sella si va più forte (il cavallo al galoppo con B è il più veloce)
+      int speed = G.mount ? ((keysHeld & KEY_B) && G.mount == 2 ? 4 : 2) : (keysHeld & KEY_B) ? 2 : 1;
       if (player.moving < speed) speed = player.moving;
       player.px += DX[player.dir] * speed; player.py += DY[player.dir] * speed; player.moving -= speed;
       player.step += speed;

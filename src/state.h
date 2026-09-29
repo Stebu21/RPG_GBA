@@ -11,7 +11,7 @@ typedef struct {
   u32 tomes[4];                  // abilità imparate dai tomi (bit per abilità)
   u8 status;                     // 1 veleno, 2 sonno (solo in battaglia, azzerato dopo)
 } Member;
-#define SAVE_VERSION 2   // 2: ruoli nuovi (le abilità imparate dai tomi cambiano posto: i salvataggi della 1 non valgono)
+#define SAVE_VERSION 3   // 2: ruoli nuovi (le abilità imparate dai tomi cambiano posto: i salvataggi della 1 non valgono)
 typedef struct {
   u32 magic;
   u8 version, hero, map, x, y, dir;
@@ -24,6 +24,7 @@ typedef struct {
   u8 chests[4];
   u8 quest[16], qcount[16];      // stato missione: 0 no, 1 accettata, 2 conclusa
   u8 visited;                    // paesi visitati (per il viaggio rapido): bit per mappa-paese
+  u8 mounts, mount;              // cavalcature trovate (bit 1 asino, bit 2 cavallo) e quella in sella (0 = a piedi)
   u32 steps, frames;
   u16 sum;
 } GameState;

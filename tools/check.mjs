@@ -16,7 +16,7 @@ writeFileSync('build/check.gdb', [
   'set pagination off', 'set confirm off', 'target remote localhost:2345',
   'break testSnap', 'commands', '  silent',
   dump('vram', '0x06000000', '0x06018000'), dump('pal', '0x05000000', '0x05000400'), dump('oam', '0x07000000', '0x07000400'), dump('io', '0x04000000', '0x04000060'), dump('shadow', '&ioShadow', '((char*)&ioShadow)+18'),
-  '  printf "SNAP %d map=%d x=%d y=%d hero=%d nparty=%d gold=%d hp0=%d hp1=%d lv0=%d flags0=%d steps=%d pozioni=%d joined=%d saved=%d quest=%d chests=%d\\n", $r0, G.map, G.x, G.y, G.hero, G.nparty, G.gold, G.ch[0].hp, G.ch[1].hp, G.ch[0].level, G.flags[0], G.steps, G.inv[0], G.joined, saveVerified, G.quest[3], G.chests[0] | G.chests[1] << 8',
+  '  printf "SNAP %d map=%d x=%d y=%d hero=%d nparty=%d gold=%d hp0=%d hp1=%d lv0=%d flags0=%d steps=%d pozioni=%d joined=%d saved=%d quest=%d chests=%d mounts=%d mount=%d\\n", $r0, G.map, G.x, G.y, G.hero, G.nparty, G.gold, G.ch[0].hp, G.ch[1].hp, G.ch[0].level, G.flags[0], G.steps, G.inv[0], G.joined, saveVerified, G.quest[3], G.chests[0] | G.chests[1] << 8, G.mounts, G.mount',
   '  shell node tools/snap-rotate.mjs', '  continue', 'end',
   'break testDone', 'commands', '  silent', '  printf "DONE\\n"', '  kill', '  quit', 'end',
   'continue',
@@ -52,6 +52,8 @@ assert.equal(snaps[25]?.map, 0, 'non si arriva sulla mappa del mondo');
 const a = snaps[14], b = snaps[30];
 assert.ok(b && a && b.gold === a.gold && b.map === a.map && b.x === a.x && b.y === a.y && b.lv0 === a.lv0 && b.hp0 === a.hp0 && b.pozioni === a.pozioni && b.nparty === a.nparty, 'la partita salvata non viene ripresa uguale: ' + JSON.stringify([a, b]));
 assert.ok(snaps[27] && snaps[29] && snaps[29].map === snaps[9].map, 'la mappa consultabile non si apre o non torna al menu');
+assert.ok(snaps[31]?.mounts === 2 && snaps[31].mount === 1, 'l’asinello non si prende o non si sale in sella');
+assert.ok(snaps[32]?.mount === 0 && snaps[33]?.mount === 1 && snaps[33].mounts === 2, 'SELECT non fa scendere e risalire');
 assert.ok(snaps[99], 'il finale non è arrivato');
 assert.ok(out.includes('DONE'), 'partita non completata');
 console.log('CHECK OK');

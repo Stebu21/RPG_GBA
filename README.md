@@ -15,12 +15,18 @@ Apri `menace.gba` (copia di `build/menace.gba`) con un emulatore GBA (per esempi
 | Croce | cammina (a caselle); tieni premuto **B** per correre |
 | **A** | parla, apri forzieri, conferma |
 | **B** | annulla |
-| **START** | menu: squadra, oggetti, equipaggiamento, missioni, salvataggio, mappa |
+| **SELECT** | sali o scendi dalla cavalcatura (asinello a Castiglione, cavallo nel castello di Jerago); in sella si va più veloci, col cavallo e B si galoppa |
+| **START** | menu: squadra, oggetti, equipaggiamento, missioni, mappa, salvataggio |
+| **L / R** | nella mappa: R passa dalla pianta del paese alla provincia |
+
+Tastiera in mGBA (configurata): **Ctrl** = A, **Alt** = B, **Spazio** = START, **Tab** = SELECT, **Q** / **W** = L / R, frecce = croce.
 
 Si sceglie Ste o Riki; l'altro segue sulla mappa. La freccia in alto a sinistra indica la prossima tappa
 della trama (o l'uscita da prendere per arrivarci). Il salvataggio va sulla SRAM della cartuccia.
 
-Dal menu START, **Mappa** apre la mappa della provincia: la stella che lampeggia è la tua posizione, il punto esclamativo la prossima meta; con la croce si scorrono i paesi e se ne legge il nome.
+Dal menu START, **Mappa** funziona come in Pokémon: dentro un paese o un edificio mostra la pianta del paese, fuori mostra la provincia con le strade che collegano i paesi; con R si passa dall'una all'altra. La stella che lampeggia è la tua posizione, il punto esclamativo la prossima meta; con la croce si scorrono i luoghi (negozio, locanda, chiesa, uscite).
+
+Il salvataggio (menu START > Salva) va sulla memoria della cartuccia e dal titolo si riprende con **Continua**; un salvataggio di una versione vecchia del gioco viene ignorato.
 
 ![mappa](docs/mappa.png)
 

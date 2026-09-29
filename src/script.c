@@ -168,6 +168,15 @@ void scriptTrigger(const Trigger *t){
       }
       break;
     }
+    case T_MOUNT: {
+      static const char *const NAME[] = { "", "L'asinello", "Il cavallo" };
+      G.mounts |= 1 << t->a; G.mount = t->a; sfx(SFX_ITEM);
+      buf[0] = 0; cat(buf, NAME[t->a]); cat(buf, " ti annusa la mano e si lascia accarezzare: ora è tuo! Ci sali in groppa.");
+      say("", buf);
+      say("", "SELECT: sali e scendi. In sella si va più veloci, e col cavallo tenendo premuto B si galoppa.");
+      worldRedraw();
+      break;
+    }
     case T_HEAL: fullHeal(); sfx(SFX_HEAL); say("", "Una luce calda vi avvolge. HP e MP completamente ripristinati!"); break;
   }
 }
