@@ -631,23 +631,47 @@ export function paintMap(id, m, frame=0, info={}){
     }
   }
   function drawSanctuary(x0, y0, fw, fh){
-    // il santuario del Sacro Monte in cima alla salita: facciata con colonne e cupola tagliata dal bordo
-    const X = x0 * 16, Y = y0 * 16, Wp = fw * 16, Hp = fh * 16;
+    // il santuario del Sacro Monte: timpano con croce dorata, quattro colonne con capitelli,
+    // nicchie con statue, portale dorato ad arco, scalinata
+    const X = x0 * 16, Y = y0 * 16, Wp = fw * 16, Hp = fh * 16, mid = Wp / 2;
+    const P = (x, y, c)=>gset(X + x, Y + y, c);
     for (let y = 0; y < Hp; y++) for (let x = 0; x < Wp; x++){
-      let c = ((y >> 2) & 1) ? C.st1 : C.st0;
-      if ((x % 12) < 3) c = (x % 12) === 0 ? C.st0 : (x % 12) === 2 ? C.st3 : C.st1;       // colonne
-      if (y < 6) c = y === 5 ? C.st4 : y === 0 ? C.st2 : C.st0;                           // architrave
-      if (x === 0 || x === Wp - 1) c = C.ol0;
-      if (y >= Hp - 3) c = y === Hp - 1 ? C.ol0 : C.st3;
-      gset(X + x, Y + y, c);
+      let c = ((y >> 2) + (x >> 3)) & 1 ? C.st1 : C.st2;              // conci di pietra
+      if ((y & 3) === 3) c = C.st3;
+      P(x, y, c);
     }
-    // portone dorato
-    for (let y = 12; y < Hp - 3; y++) for (let x = Wp / 2 - 9; x < Wp / 2 + 9; x++){
-      const arch = y < 18 && Math.hypot(x + 0.5 - Wp / 2, y - 18) > 8.5; if (arch) continue;
-      const e = Math.abs(x + 0.5 - Wp / 2) > 7.5 || (y < 18 && Math.hypot(x + 0.5 - Wp / 2, y - 18) > 7.6);
-      gset(X + x, Y + y, e ? C.ol0 : Math.abs(x + 0.5 - Wp / 2) < 1 ? C.wd5 : (y % 4 === 0) ? C.li2 : C.wd3);
+    // timpano (righe 0-7): triangolo chiaro con cornice scura
+    for (let y = 0; y < 8; y++) for (let x = 0; x < Wp; x++){
+      const half = y * (mid / 8) + 4;
+      if (Math.abs(x + 0.5 - mid) > half) continue;
+      const edge = Math.abs(x + 0.5 - mid) > half - 1.5;
+      P(x, y, edge ? C.st4 : y === 7 ? C.st4 : C.wi0);
     }
-    for (const [dx, dy] of [[-4, 21], [3, 21]]) gset(X + Wp / 2 + dx, Y + dy, C.li0);
+    for (let x = 0; x < Wp; x++){ P(x, 8, C.ol0); P(x, 9, C.st0 ?? C.wi0); P(x, 10, C.st3); }   // architrave
+    for (let j = 1; j < 7; j++){ P(mid - 1, j, C.li1); P(mid, j, C.li2); } for (let i = -2; i < 2; i++) P(mid + i, 3, C.li1);
+    // colonne con capitelli e basi
+    for (const cx of [3, 19, 41, 57]) for (let y = 11; y < Hp - 4; y++) for (let k = 0; k < 5; k++){
+      let c = k === 0 ? C.wi0 : k === 4 ? C.st4 : k === 3 ? C.st3 : C.st1;
+      if (y === 11 || y === Hp - 5) c = k === 4 ? C.st4 : C.wi0;       // capitello e base
+      P(cx + k - 1, y, c);
+    }
+    // nicchie con statue tra le colonne esterne
+    for (const nx of [10, 48]){
+      for (let y = 13; y < 25; y++) for (let x = 0; x < 6; x++){ if (y < 15 && (x === 0 || x === 5)) continue; P(nx + x, y, x === 0 || x === 5 || y === 13 ? C.st4 : C.ol1); }
+      const fig = ['..ww..', '.wwww.', '..ww..', '.wwww.', 'wwwwww', '.wwww.', '.w..w.', '.w..w.'];
+      fig.forEach((r, j)=>[...r].forEach((ch, i)=>{ if (ch !== '.') P(nx + i, 15 + j, i < 3 ? C.wi0 : C.st2); }));
+    }
+    // portale dorato ad arco
+    for (let y = 12; y < Hp - 4; y++) for (let x = mid - 9; x < mid + 9; x++){
+      const dx = x + 0.5 - mid, dy = y - 19;
+      if (dy < 0 && Math.hypot(dx, dy) > 8.5) continue;
+      const rim = dy < 0 ? Math.hypot(dx, dy) > 7.3 : Math.abs(dx) > 7.3;
+      P(x, y, rim ? C.ol0 : Math.abs(dx) < 1 ? C.wd5 : (y % 4 === 0) ? C.li2 : (x & 3) === 0 ? C.wd3 : C.li1);
+    }
+    P(mid - 3, 22, C.wi0); P(mid + 2, 22, C.wi0);
+    // scalinata
+    for (let y = Hp - 4; y < Hp; y++) for (let x = 0; x < Wp; x++) P(x, y, (y - (Hp - 4)) % 2 ? C.st3 : C.wi0);
+    for (let y = 0; y < Hp; y++){ P(0, y, C.ol0); P(Wp - 1, y, C.ol0); }
   }
 
   // ================= interni =================

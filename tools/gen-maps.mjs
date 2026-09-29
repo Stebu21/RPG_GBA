@@ -85,7 +85,7 @@ export const CHESTS = [];
 
 // sprite dei personaggi: 9 fotogrammi 16x32 (72 tile, in ordine 1D: ogni fotogramma 2x4 tile)
 // Scale2x (EPX): raddoppia la pixel art arrotondando le diagonali invece di fare quadrettoni
-function scale2x(img){
+export function scale2x(img){
   const o = new Img(img.w * 2, img.h * 2);
   for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++){
     const P = img.get(x, y), A = img.get(x, y - 1), B = img.get(x + 1, y), Cc = img.get(x - 1, y), D = img.get(x, y + 1);
@@ -94,6 +94,21 @@ function scale2x(img){
     o.set(x * 2, y * 2 + 1, D === Cc && D !== B && Cc !== A ? Cc : P);
     o.set(x * 2 + 1, y * 2 + 1, B === D && B !== A && D !== Cc ? D : P);
   }
+  return o;
+}
+// dopo l'ingrandimento: contorno di nuovo sottile (un pixel verso l'esterno), riflesso bianco negli occhi,
+// luce sul bordo sinistro dei volumi: più dettaglio, meno "pixel doppio"
+export function refineBig(img){
+  const o = img.clone(), OL = 1, EYE = 4, WH = 5;
+  const tr = (x, y)=>img.get(x, y) === 0;
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++){
+    if (img.get(x, y) !== OL) continue;
+    if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy])=>tr(x + dx, y + dy))) continue;   // bordo esterno: resta
+    // contorno interno ereditato dal raddoppio: prende il colore del vicino all'interno
+    const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy])=>img.get(x + dx, y + dy)).find(c=>c && c !== OL);
+    if (n) o.set(x, y, n);
+  }
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) if (img.get(x, y) === EYE && img.get(x, y - 1) !== EYE && img.get(x - 1, y) !== EYE) o.set(x, y, WH);
   return o;
 }
 export function genLooks(){
@@ -107,7 +122,7 @@ export function genLooks(){
     let big = 'NULL';
     if (CHAR_IDS.includes(l.key)){
       const bd = [];
-      for (const f of [frames[0], frames[6], frames[7]]){ const b2 = scale2x(f); for (let ty = 0; ty < 8; ty++) for (let tx = 0; tx < 4; tx++){ const b = b2.tile4(tx, ty); for (let k = 0; k < 32; k += 2) bd.push(b[k] | (b[k + 1] << 8)); } }
+      for (const f of [frames[0], frames[6], frames[7]]){ const b2 = refineBig(scale2x(f)); for (let ty = 0; ty < 8; ty++) for (let tx = 0; tx < 4; tx++){ const b = b2.tile4(tx, ty); for (let k = 0; k < 32; k += 2) bd.push(b[k] | (b[k + 1] << 8)); } }
       c += cArray('u16', `LOOK_BIG_${i}`, bd, 16); big = `LOOK_BIG_${i}`;
     }
     list.push(`{ LOOK_GFX_${i}, LOOK_PAL_${i}, ${big} }`);
