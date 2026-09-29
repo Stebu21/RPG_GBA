@@ -67,7 +67,7 @@ void addItem(int it, int n){ if (it < 128){ int v = G.inv[it] + n; G.inv[it] = v
 
 void newGame(int hero){
   memset(&G, 0, sizeof G);
-  G.magic = 0x4D454E41; G.version = 1;
+  G.magic = 0x4D454E41; G.version = SAVE_VERSION;
   G.hero = hero; G.map = MAP_ACCADEMIA; G.x = 9; G.y = 8; G.dir = 1;   // davanti al Rettore, come nella versione web
   G.gold = 350;
   int partner = hero == CH_STE ? CH_RIKI : CH_STE;
@@ -87,7 +87,8 @@ int saveGame(void){ G.sum = checksum(); sramWrite(0, &G, sizeof G); saveVerified
 int loadGame(void){
   GameState tmp = G;
   sramRead(0, &G, sizeof G);
-  if (G.magic != 0x4D454E41 || G.sum != checksum()){ G = tmp; return 0; }
+  if (G.magic != 0x4D454E41 || G.version != SAVE_VERSION || G.sum != checksum()){ G = tmp; return 0; }
   return 1;
 }
-int hasSave(void){ u32 m; sramRead(0, &m, 4); return m == 0x4D454E41; }
+// c'è un salvataggio utilizzabile: firma e versione giuste (un salvataggio di una versione vecchia del gioco si ignora)
+int hasSave(void){ u8 h[8]; sramRead(0, h, 8); u32 m = h[0] | h[1] << 8 | h[2] << 16 | (u32)h[3] << 24; return m == 0x4D454E41 && h[4] == SAVE_VERSION; }

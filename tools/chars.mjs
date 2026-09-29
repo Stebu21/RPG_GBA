@@ -179,12 +179,14 @@ function decorate(img, look, dir, y0){
     if (!up){ const wx = side ? 3 : 13; for (let y = 13; y < 19; y++) px(wx, y, C.WH); px(wx, 11, C.AC); px(wx - 1, 12, C.AC); px(wx + 1, 12, C.AC); px(wx, 12, C.WH); px(wx, 13, C.AC); }
   }
   if (look.outfit === 'smith'){
-    // grembiule di cuoio dal petto alle ginocchia, martello pesante in mano
-    if (!up) for (let y = 14; y < 21; y++) for (let x = side ? 5 : 5; x < (side ? 10 : 11); x++){ const c = get(x, y); if (c && c !== C.SK && c !== C.SKD) px(x, y, y === 14 || x === 5 ? C.X : (x + y) % 7 ? C.X : C.HD); }
-    if (up) for (const x of [5, 10]) for (let y = 13; y < 18; y++) px(x, y, C.X);
+    // templare: cotta grigia, sopravveste bianca con la croce rossa, spalline d'acciaio, ascia forgiata da lui
+    for (let y = 14; y < 22; y++) for (let x = side ? 5 : 5; x < (side ? 10 : 11); x++){ const c = get(x, y); if (c && c !== C.SK && c !== C.SKD && c !== C.OL) px(x, y, C.WH); }
+    if (!up && !side){ for (let y = 14; y < 21; y++){ px(7, y, C.AC); px(8, y, C.AC); } for (let x = 5; x < 11; x++) px(x, 16, C.AC); }
+    if (side){ for (let y = 14; y < 21; y++) px(7, y, C.AC); px(6, 16, C.AC); px(8, 16, C.AC); }
+    for (const x of side ? [4, 9] : [2, 3, 12, 13]) if (get(x, 14)) px(x, 14, C.SL);
     const hx = side ? 3 : up ? 2 : 13;
-    for (let y = 16; y < 21; y++) px(hx, y, C.HD);
-    for (let x = hx - 1; x <= hx + 1; x++){ px(x, 21, C.AC); px(x, 22, C.AC); }
+    for (let y = 15; y < 23; y++) px(hx, y, C.X);
+    for (const [x, y, c] of [[hx - 1, 14, C.SL], [hx, 14, C.SL], [hx + 1, 14, C.SL], [hx - 2, 15, C.SL], [hx - 1, 15, C.SL], [hx - 2, 16, C.SH], [hx - 1, 16, C.SH]]) px(x, y, c);
   }
   if (look.outfit === 'bard'){
     // berretto rosso con la piuma bianca, liuto a tracolla
@@ -245,7 +247,7 @@ const shade = (h, f)=>{ const [r, g, b] = typeof h === 'string' ? hex(h) : h; re
 // colori di abito, accessorio (AC) ed extra (X) per ogni mestiere
 const OUTFIT = {
   fairy:    c=>({ shirt:c, ac:'#ff90c8', x:shade(c, 0.62) }),
-  smith:    ()=>({ shirt:'#4a4440', ac:'#a0a6b0', x:'#7a4a2a' }),
+  smith:    ()=>({ shirt:'#8a919b', ac:'#c02828', x:'#7a4a2a' }),
   bard:     c=>({ shirt:c, ac:'#b02838', x:'#c07838' }),
   healer:   ()=>({ shirt:'#f0eee6', ac:'#d83030', x:'#c8a068' }),
   botanist: ()=>({ shirt:'#c0392b', ac:'#3f9a48', x:'#e8c878' }),

@@ -11,6 +11,7 @@ typedef struct {
   u32 tomes[4];                  // abilità imparate dai tomi (bit per abilità)
   u8 status;                     // 1 veleno, 2 sonno (solo in battaglia, azzerato dopo)
 } Member;
+#define SAVE_VERSION 2   // 2: ruoli nuovi (le abilità imparate dai tomi cambiano posto: i salvataggi della 1 non valgono)
 typedef struct {
   u32 magic;
   u8 version, hero, map, x, y, dir;

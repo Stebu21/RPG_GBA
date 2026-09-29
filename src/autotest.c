@@ -5,11 +5,12 @@
 #include "state.h"
 
 volatile int testSnapId, testForceBattle, testNoEncounters = 1, testWarpMap = -1, testWarpX, testWarpY;
+volatile int testLoadOk;
 volatile u32 testWorldIdle, testWaiting;   // ultimo fotogramma in cui il mondo era fermo / un testo o menu aspettava un tasto
 __attribute__((noinline)) void testSnap(int id){ testSnapId = id; asm volatile("" ::: "memory"); }
 __attribute__((noinline)) void testDone(void){ asm volatile("" ::: "memory"); for (;;) frame(); }
 
-enum { OP_NONE, OP_SNAP, OP_DONE, OP_FORCE, OP_ENC, OP_MASH, OP_WARP, OP_LEVEL };
+enum { OP_NONE, OP_SNAP, OP_DONE, OP_FORCE, OP_ENC, OP_MASH, OP_WARP, OP_LEVEL, OP_LOAD };
 typedef struct { u16 keys, frames; u8 op, arg, arg2; } TStep;
 #define W(n)        { 0, n, 0, 0 }
 #define HOLD(k, n)  { k, n, 0, 0 }
@@ -18,6 +19,7 @@ typedef struct { u16 keys, frames; u8 op, arg, arg2; } TStep;
 #define MASH        { 0, 1, OP_MASH, 0 }   /* A finché non si torna a camminare nel mondo */
 #define WARP(m, x, y) { m, 1, OP_WARP, x, y }, W(60)
 #define LEVEL(n)    { 0, 1, OP_LEVEL, n }
+#define LOAD        { 0, 1, OP_LOAD, 0 }   /* azzera oro, livello e posizione, poi ricarica dalla SRAM */
 #define A10         P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34), P(KEY_A), W(34)
 
 static const TStep SCRIPT[] = {
@@ -40,6 +42,7 @@ static const TStep SCRIPT[] = {
   MASH, W(40), SNAP(13),                             // fino alla vittoria e ritorno in città
   // salvataggio dal menu di pausa
   P(KEY_START), W(20), P(KEY_DOWN), P(KEY_DOWN), P(KEY_DOWN), P(KEY_DOWN), P(KEY_A), W(30), P(KEY_A), W(20), P(KEY_B), W(30), SNAP(14),
+  LOAD, W(4), SNAP(30),                              // riprendere la partita salvata: lo stato torna quello salvato
   // negozio di Varese: davanti al bancone, si compra la prima cosa (Pozione)
   WARP(MAP_NEGOZIO_VARESE, 3, 5), HOLD(KEY_UP, 2), W(10), P(KEY_A), W(60), P(KEY_A), W(30), SNAP(15), P(KEY_A), W(40), P(KEY_A), W(30), P(KEY_B), W(40), SNAP(16),
   // Vedano: la squadra cresce e affronta il Guardiano del Lazzaretto
@@ -75,6 +78,7 @@ void autotestKeys(u16 *held){
     if (s->op == OP_DONE) testDone();
     if (s->op == OP_FORCE) testForceBattle = 1;
     if (s->op == OP_WARP){ testWarpX = s->arg; testWarpY = s->arg2; testWarpMap = s->keys; }
+    if (s->op == OP_LOAD){ extern int loadGame(void); G.gold = 0; G.ch[0].level = 1; G.ch[1].level = 1; G.x = 0; G.map = 5; G.inv[0] = 0; testLoadOk = loadGame(); }
     if (s->op == OP_LEVEL) for (int c = 0; c < 8; c++) if (G.joined & (1 << c)){ G.ch[c].level = s->arg; fullHeal(); }
   }
   *held = s->op ? 0 : s->keys;

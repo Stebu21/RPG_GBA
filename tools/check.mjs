@@ -49,6 +49,8 @@ assert.ok(snaps[20] && snaps[20].flags0 & 0x40, 'Jerago non completato (Sigillo 
 assert.equal(snaps[23]?.quest, 1, 'la missione dei lupi non è stata accettata');
 assert.ok(snaps[24]?.chests, 'il forziere del parco non si apre');
 assert.equal(snaps[25]?.map, 0, 'non si arriva sulla mappa del mondo');
+const a = snaps[14], b = snaps[30];
+assert.ok(b && a && b.gold === a.gold && b.map === a.map && b.x === a.x && b.y === a.y && b.lv0 === a.lv0 && b.hp0 === a.hp0 && b.pozioni === a.pozioni && b.nparty === a.nparty, 'la partita salvata non viene ripresa uguale: ' + JSON.stringify([a, b]));
 assert.ok(snaps[27] && snaps[29] && snaps[29].map === snaps[9].map, 'la mappa consultabile non si apre o non torna al menu');
 assert.ok(snaps[99], 'il finale non è arrivato');
 assert.ok(out.includes('DONE'), 'partita non completata');

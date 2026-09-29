@@ -139,59 +139,79 @@ static void questsMenu(void){
   winClose(w);
 }
 
-// ---------- mappa consultabile della provincia ----------
-// casella della mappa del mondo in cui si trova (o a cui appartiene) un luogo
-static int worldPos(int map, int x, int y, int *wx, int *wy){
-  if (map == MAP_WORLD){ *wx = x; *wy = y; return 1; }
-  if (WORLD_POS[map][0] == 255) return 0;
-  *wx = WORLD_POS[map][0]; *wy = WORLD_POS[map][1]; return 1;
+// ---------- mappa consultabile, come in Pokémon ----------
+// in un paese (o in un suo edificio) si apre la pianta del paese; fuori, la provincia con le strade.
+// R passa dalla pianta alla provincia e ritorno; la croce scorre i luoghi; A o B chiude.
+// posizione (in pixel dello schermo) di un luogo nella vista v, -1 se non ci sta
+static int viewPoint(int v, int map, int x, int y, int *sx, int *sy){
+  const MapView *mv = &VIEWS[v];
+  if (v == 0){
+    int wx = x, wy = y;
+    if (map != MAP_WORLD){ if (WORLD_POS[map][0] == 255) return 0; wx = WORLD_POS[map][0]; wy = WORLD_POS[map][1]; }
+    *sx = mv->ox + wx * mv->scale + 2; *sy = mv->oy + wy * mv->scale + 2; return 1;
+  }
+  if (VIEW_POS[map][0] != v) return 0;
+  if (VIEW_POS[map][1] != 255){ x = VIEW_POS[map][1]; y = VIEW_POS[map][2]; }
+  *sx = mv->ox + x * mv->scale + (mv->scale >> 1); *sy = mv->oy + y * mv->scale + (mv->scale >> 1); return 1;
 }
-#define TM_X0 8                             // come in tools/gen-townmap.mjs: 4 pixel per casella
+static void loadView(int v){
+  const MapView *mv = &VIEWS[v];
+  memcpy16(CHARBLOCK(1), mv->tiles, mv->ntiles * 16);
+  memcpy16(MEM_PAL_BG + 8 * 16, mv->pal, mv->npal * 16);
+  u16 *sb = SCREENBLOCK(28);
+  for (int i = 0; i < 32 * 20; i++) sb[i] = mv->map[i];
+  setScroll(1, 0, 0);
+}
 static void townMap(void){
   fadeOut(10);
   frameHook = 0;                            // niente animazione dell'acqua: scriverebbe sui tile della mappa
   REG_DISPCNT &= ~DCNT_BG(2);
-  memcpy16(CHARBLOCK(1), TOWNMAP_TILES, TOWNMAP_NTILES * 16);
-  memcpy16(MEM_PAL_BG + 8 * 16, TOWNMAP_PAL, TOWNMAP_NPAL * 16);
-  u16 *sb = SCREENBLOCK(28);
-  for (int i = 0; i < 32 * 20; i++) sb[i] = TOWNMAP_MAP[i];
-  setScroll(1, 0, 0);
   oamHideAll();
-  // dove siamo, e la prossima tappa della trama
-  int px = -1, py = -1, gx = -1, gy = -1; const Goal *goal = 0;
-  worldPos(G.map, G.x, G.y, &px, &py);
+  const Goal *goal = 0;
   for (int i = 0; i < NUM_GOALS; i++) if (!flagGet(GOALS[i].flag)){ goal = &GOALS[i]; break; }
-  if (goal && !worldPos(goal->map, goal->x, goal->y, &gx, &gy)) goal = 0;
-  // il cursore parte dal paese più vicino
-  int sel = 0, best = 1 << 30;
-  for (int i = 0; i < NUM_TOWNS; i++){ int d = (TOWNS[i].x - px) * (TOWNS[i].x - px) + (TOWNS[i].y - py) * (TOWNS[i].y - py); if (d < best){ best = d; sel = i; } }
+  int home = VIEW_POS[G.map][0];           // la pianta del paese in cui ci si trova (0 = provincia)
+  int v = home, sel = 0, shown = -1, top = -1, px = 0, py = 0, hasMe = 0, gx = 0, gy = 0, hasGoal = 0;
   Win *w = 0;
-  int shown = -1, top = -1;
-  fadeIn(10);
-  for (int t = 0;; t++){
+  for (int t = 0, reload = 1;; t++){
+    if (reload){
+      reload = 0; shown = -1;
+      if (t) fadeOut(8);
+      oamHideAll(); loadView(v);
+      hasMe = viewPoint(v, G.map, G.x, G.y, &px, &py);
+      hasGoal = goal && viewPoint(v, goal->map, goal->x, goal->y, &gx, &gy);
+      // il cursore parte dal luogo più vicino a dove siamo
+      int best = 1 << 30; sel = 0;
+      for (int i = 0; i < VIEWS[v].npins; i++){ int dx = VIEWS[v].pins[i].x - px, dy = VIEWS[v].pins[i].y - py, d = dx * dx + dy * dy; if (d < best){ best = d; sel = i; } }
+      if (w){ winClose(w); w = 0; }
+      if (t) fadeIn(8); else fadeIn(10);
+    }
+    const MapView *mv = &VIEWS[v]; const MapPin *pin = &mv->pins[sel];
     if (shown != sel){
-      // la finestra sta dalla parte opposta al paese scelto, così non lo copre
-      int wantTop = TOWNS[sel].y * 4 >= 80;
+      // la finestra sta dalla parte opposta al luogo scelto, così non lo copre
+      int wantTop = pin->y >= 80;
       if (!w || wantTop != top){ if (w) winClose(w); top = wantTop; w = winOpen(0, top ? 0 : 15, 30, 5); }
       shown = sel; winClear(w);
-      const TownPin *tp = &TOWNS[sel];
-      winText(w, 4, 1, tp->name, TC_BLUE);
-      if (px == tp->x && py == tp->y) winText(w, 4 + textWidth(tp->name) + 8, 1, "(sei qui)", TC_GRAY);
-      if (goal) { char b[64]; b[0] = 0; strcat(b, "Meta: "); strcat(b, goal->label); winText(w, 4, 12, b, TC_TEXT); }
-      else winText(w, 4, 12, "La provincia è di nuovo in pace.", TC_TEXT);
+      int x = winText(w, 4, 1, v ? mv->name : pin->name, TC_BLUE);
+      if (v) x = winText(w, x + 6, 1, pin->name, TC_TEXT);
+      if (hasMe && (px - pin->x) * (px - pin->x) + (py - pin->y) * (py - pin->y) <= 36) winText(w, x + 6, 1, "(sei qui)", TC_GRAY);
+      char b[64]; b[0] = 0;
+      if (goal){ strcat(b, "Meta: "); strcat(b, goal->label); } else strcat(b, "La provincia è di nuovo in pace.");
+      winText(w, 4, 12, b, TC_TEXT);
+      winText(w, 180, 12, v ? "R: provincia" : home ? "R: paese" : "", TC_GRAY);
     }
-    // segnalini: tu (stella che lampeggia), la meta (punto esclamativo che saltella), il cursore sul paese
-    if (px >= 0 && (t & 16)) oamSet(0, TM_X0 + px * 4 - 2, py * 4 - 2, OBJ_SQUARE, OBJ_SIZE(0), 2 | OBJ_PAL(0)); else oamBuf[0].a0 = OBJ_HIDE;
-    if (goal) oamSet(1, TM_X0 + gx * 4 - 2, gy * 4 - 10 - ((t >> 3) & 1) * 2, OBJ_SQUARE, OBJ_SIZE(0), 11 | OBJ_PAL(0)); else oamBuf[1].a0 = OBJ_HIDE;
-    oamSet(2, TM_X0 + TOWNS[sel].x * 4 - 2, TOWNS[sel].y * 4 - 16 - ((t >> 4) & 1), OBJ_SQUARE, OBJ_SIZE(0), 1 | OBJ_PAL(0));
+    // segnalini: tu (stella che lampeggia), la meta (punto esclamativo che saltella), il cursore sul luogo
+    if (hasMe && (t & 16)) oamSet(0, px - 4, py - 4, OBJ_SQUARE, OBJ_SIZE(0), 2 | OBJ_PAL(0)); else oamBuf[0].a0 = OBJ_HIDE;
+    if (hasGoal) oamSet(1, gx - 4, gy - 12 - ((t >> 3) & 1) * 2, OBJ_SQUARE, OBJ_SIZE(0), 11 | OBJ_PAL(0)); else oamBuf[1].a0 = OBJ_HIDE;
+    oamSet(2, pin->x - 4, pin->y - 14 - ((t >> 4) & 1), OBJ_SQUARE, OBJ_SIZE(0), 1 | OBJ_PAL(0));
     TEST_WAITING();
     frame();
-    if (keysRep & (KEY_RIGHT | KEY_DOWN)){ sel = (sel + 1) % NUM_TOWNS; sfx(SFX_CURSOR); }
-    if (keysRep & (KEY_LEFT | KEY_UP)){ sel = (sel + NUM_TOWNS - 1) % NUM_TOWNS; sfx(SFX_CURSOR); }
+    if (keysRep & (KEY_RIGHT | KEY_DOWN)){ sel = (sel + 1) % mv->npins; sfx(SFX_CURSOR); }
+    if (keysRep & (KEY_LEFT | KEY_UP)){ sel = (sel + mv->npins - 1) % mv->npins; sfx(SFX_CURSOR); }
+    if ((keysHit & (KEY_R | KEY_L)) && home){ v = v ? 0 : home; reload = 1; sfx(SFX_OK); }
     if (keysHit & (KEY_A | KEY_B)){ sfx(SFX_CANCEL); break; }
   }
   fadeOut(10);
-  winClose(w);
+  if (w) winClose(w);
   oamHideAll();
   worldRestoreGfx();
   fadeIn(10);
