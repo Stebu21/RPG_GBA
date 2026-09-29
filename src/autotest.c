@@ -30,6 +30,9 @@ static const TStep SCRIPT[] = {
   HOLD(KEY_DOWN, 36), W(80), SNAP(7),                // uscita: Varese
   HOLD(KEY_DOWN, 64), W(10), SNAP(8),                // camminata in città
   P(KEY_START), W(24), SNAP(9),                      // menu di pausa
+  P(KEY_DOWN), P(KEY_DOWN), P(KEY_DOWN), P(KEY_DOWN), P(KEY_DOWN), P(KEY_A), W(50), SNAP(27),   // mappa consultabile
+  P(KEY_RIGHT), W(20), SNAP(28),                     // cursore sul paese successivo
+  P(KEY_B), W(50), SNAP(29),                         // di nuovo il menu, con la città sotto
   P(KEY_B), W(30),
   { 0, 1, OP_FORCE, 0 }, HOLD(KEY_UP, 17), W(140), SNAP(10),     // battaglia forzata
   P(KEY_A), W(12), SNAP(11),                         // scelta del bersaglio

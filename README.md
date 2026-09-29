@@ -15,10 +15,14 @@ Apri `menace.gba` (copia di `build/menace.gba`) con un emulatore GBA (per esempi
 | Croce | cammina (a caselle); tieni premuto **B** per correre |
 | **A** | parla, apri forzieri, conferma |
 | **B** | annulla |
-| **START** | menu: squadra, oggetti, equipaggiamento, missioni, salvataggio |
+| **START** | menu: squadra, oggetti, equipaggiamento, missioni, salvataggio, mappa |
 
 Si sceglie Ste o Riki; l'altro segue sulla mappa. La freccia in alto a sinistra indica la prossima tappa
 della trama (o l'uscita da prendere per arrivarci). Il salvataggio va sulla SRAM della cartuccia.
+
+Dal menu START, **Mappa** apre la mappa della provincia: la stella che lampeggia è la tua posizione, il punto esclamativo la prossima meta; con la croce si scorrono i paesi e se ne legge il nome.
+
+![mappa](docs/mappa.png)
 
 ## Cosa c'è
 

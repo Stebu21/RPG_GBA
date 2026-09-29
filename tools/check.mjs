@@ -49,6 +49,7 @@ assert.ok(snaps[20] && snaps[20].flags0 & 0x40, 'Jerago non completato (Sigillo 
 assert.equal(snaps[23]?.quest, 1, 'la missione dei lupi non è stata accettata');
 assert.ok(snaps[24]?.chests, 'il forziere del parco non si apre');
 assert.equal(snaps[25]?.map, 0, 'non si arriva sulla mappa del mondo');
+assert.ok(snaps[27] && snaps[29] && snaps[29].map === snaps[9].map, 'la mappa consultabile non si apre o non torna al menu');
 assert.ok(snaps[99], 'il finale non è arrivato');
 assert.ok(out.includes('DONE'), 'partita non completata');
 console.log('CHECK OK');

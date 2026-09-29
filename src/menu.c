@@ -3,6 +3,7 @@
 #include "state.h"
 #include "sys.h"
 #include "text.h"
+#include "world.h"
 #include <string.h>
 
 static void cat(char *d, const char *s){ while (*d) d++; while ((*d++ = *s++)); }
@@ -138,12 +139,71 @@ static void questsMenu(void){
   winClose(w);
 }
 
+// ---------- mappa consultabile della provincia ----------
+// casella della mappa del mondo in cui si trova (o a cui appartiene) un luogo
+static int worldPos(int map, int x, int y, int *wx, int *wy){
+  if (map == MAP_WORLD){ *wx = x; *wy = y; return 1; }
+  if (WORLD_POS[map][0] == 255) return 0;
+  *wx = WORLD_POS[map][0]; *wy = WORLD_POS[map][1]; return 1;
+}
+#define TM_X0 8                             // come in tools/gen-townmap.mjs: 4 pixel per casella
+static void townMap(void){
+  fadeOut(10);
+  frameHook = 0;                            // niente animazione dell'acqua: scriverebbe sui tile della mappa
+  REG_DISPCNT &= ~DCNT_BG(2);
+  memcpy16(CHARBLOCK(1), TOWNMAP_TILES, TOWNMAP_NTILES * 16);
+  memcpy16(MEM_PAL_BG + 8 * 16, TOWNMAP_PAL, TOWNMAP_NPAL * 16);
+  u16 *sb = SCREENBLOCK(28);
+  for (int i = 0; i < 32 * 20; i++) sb[i] = TOWNMAP_MAP[i];
+  setScroll(1, 0, 0);
+  oamHideAll();
+  // dove siamo, e la prossima tappa della trama
+  int px = -1, py = -1, gx = -1, gy = -1; const Goal *goal = 0;
+  worldPos(G.map, G.x, G.y, &px, &py);
+  for (int i = 0; i < NUM_GOALS; i++) if (!flagGet(GOALS[i].flag)){ goal = &GOALS[i]; break; }
+  if (goal && !worldPos(goal->map, goal->x, goal->y, &gx, &gy)) goal = 0;
+  // il cursore parte dal paese più vicino
+  int sel = 0, best = 1 << 30;
+  for (int i = 0; i < NUM_TOWNS; i++){ int d = (TOWNS[i].x - px) * (TOWNS[i].x - px) + (TOWNS[i].y - py) * (TOWNS[i].y - py); if (d < best){ best = d; sel = i; } }
+  Win *w = 0;
+  int shown = -1, top = -1;
+  fadeIn(10);
+  for (int t = 0;; t++){
+    if (shown != sel){
+      // la finestra sta dalla parte opposta al paese scelto, così non lo copre
+      int wantTop = TOWNS[sel].y * 4 >= 80;
+      if (!w || wantTop != top){ if (w) winClose(w); top = wantTop; w = winOpen(0, top ? 0 : 15, 30, 5); }
+      shown = sel; winClear(w);
+      const TownPin *tp = &TOWNS[sel];
+      winText(w, 4, 1, tp->name, TC_BLUE);
+      if (px == tp->x && py == tp->y) winText(w, 4 + textWidth(tp->name) + 8, 1, "(sei qui)", TC_GRAY);
+      if (goal) { char b[64]; b[0] = 0; strcat(b, "Meta: "); strcat(b, goal->label); winText(w, 4, 12, b, TC_TEXT); }
+      else winText(w, 4, 12, "La provincia è di nuovo in pace.", TC_TEXT);
+    }
+    // segnalini: tu (stella che lampeggia), la meta (punto esclamativo che saltella), il cursore sul paese
+    if (px >= 0 && (t & 16)) oamSet(0, TM_X0 + px * 4 - 2, py * 4 - 2, OBJ_SQUARE, OBJ_SIZE(0), 2 | OBJ_PAL(0)); else oamBuf[0].a0 = OBJ_HIDE;
+    if (goal) oamSet(1, TM_X0 + gx * 4 - 2, gy * 4 - 10 - ((t >> 3) & 1) * 2, OBJ_SQUARE, OBJ_SIZE(0), 11 | OBJ_PAL(0)); else oamBuf[1].a0 = OBJ_HIDE;
+    oamSet(2, TM_X0 + TOWNS[sel].x * 4 - 2, TOWNS[sel].y * 4 - 16 - ((t >> 4) & 1), OBJ_SQUARE, OBJ_SIZE(0), 1 | OBJ_PAL(0));
+    TEST_WAITING();
+    frame();
+    if (keysRep & (KEY_RIGHT | KEY_DOWN)){ sel = (sel + 1) % NUM_TOWNS; sfx(SFX_CURSOR); }
+    if (keysRep & (KEY_LEFT | KEY_UP)){ sel = (sel + NUM_TOWNS - 1) % NUM_TOWNS; sfx(SFX_CURSOR); }
+    if (keysHit & (KEY_A | KEY_B)){ sfx(SFX_CANCEL); break; }
+  }
+  fadeOut(10);
+  winClose(w);
+  oamHideAll();
+  worldRestoreGfx();
+  fadeIn(10);
+}
+
 void pauseMenu(void){
-  static const char *const OPTS[] = { "Squadra", "Oggetti", "Equip", "Missioni", "Salva", "Chiudi" };
+  static const char *const OPTS[] = { "Squadra", "Oggetti", "Equip", "Missioni", "Salva", "Mappa", "Chiudi" };
   oamHideAll();
   for (;;){
-    int c = menuChoose(20, 0, 10, OPTS, 6, 0, 1);
-    if (c < 0 || c == 5) break;
+    int c = menuChoose(20, 0, 10, OPTS, 7, 0, 1);
+    if (c < 0 || c == 6) break;
+    if (c == 5){ townMap(); continue; }
     if (c == 0) teamMenu();
     else if (c == 1) itemsMenu();
     else if (c == 2) equipMenu();

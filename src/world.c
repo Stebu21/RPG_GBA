@@ -170,6 +170,12 @@ void worldRedraw(void){
   frame();
   if (REG_BLDCNT) fadeIn(10);                     // dopo una battaglia o un menu lo schermo è al buio
 }
+void worldRestoreGfx(void){
+  loadMapGfx();
+  frameHook = mapAnim;
+  drawnMX = -99; updateCamera(); drawView(1);
+  REG_DISPCNT = MAP_DISPCNT;
+}
 void worldWarp(int map, int x, int y){
   sfx(SFX_DOOR);
   fadeOut(12);

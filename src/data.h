@@ -32,6 +32,11 @@ typedef struct {
 } MapDef;
 extern const MapDef MAPS[];
 extern const u8 NUM_MAPS;
+// mappa consultabile (menu START): immagine della provincia, casella del mondo di ogni luogo, paesi
+typedef struct { u8 map, x, y; const char *name; } TownPin;
+extern const u16 TOWNMAP_TILES[]; extern const u16 TOWNMAP_NTILES; extern const u8 TOWNMAP_NPAL; extern const u16 TOWNMAP_MAP[]; extern const u16 TOWNMAP_PAL[];
+extern const u8 WORLD_POS[][2];         // 255 = sconosciuta
+extern const TownPin TOWNS[]; extern const u8 NUM_TOWNS;
 extern const u16 BG_PALETTES[1][16];   // tavolozza dell'interfaccia
 
 // ---------- personaggi e sprite ----------

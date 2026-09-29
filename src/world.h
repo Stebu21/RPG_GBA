@@ -7,4 +7,5 @@ void worldRun(void);                              // ciclo dell'esplorazione (no
 void worldRedraw(void);                           // ridisegna mappa e sprite dopo una battaglia o un menu
 void worldDrawActors(void);
 void worldWarp(int map, int x, int y);            // cambio mappa con dissolvenza
+void worldRestoreGfx(void);                       // rimette la grafica della mappa (dopo la mappa consultabile) senza toccare le finestre
 extern const MapDef *curMap;
