@@ -48,6 +48,22 @@ export function quantize(rgba, w, h, outline=true, ncol=14){
 }
 // mostri più "da GBA": alfa netto, colori più saturi, luce dall'alto a sinistra e ombra verso il basso a destra
 // (a cuscino, secondo la distanza dal bordo della sagoma), filo scuro interno sul lato in ombra
+function modeDown(rgba, W, k){
+  const w = W / k, o = new Uint8ClampedArray(w * w * 4);
+  for (let by = 0; by < w; by++) for (let bx = 0; bx < w; bx++){
+    const cnt = new Map(); let op = 0;
+    for (let y = 0; y < k; y++) for (let x = 0; x < k; x++){
+      const i = ((by * k + y) * W + bx * k + x) * 4; if (rgba[i + 3] < 128) continue; op++;
+      const key = ((rgba[i] >> 4) << 8) | ((rgba[i + 1] >> 4) << 4) | (rgba[i + 2] >> 4);
+      const e = cnt.get(key) || { n:0, r:0, g:0, b:0 }; e.n++; e.r += rgba[i]; e.g += rgba[i + 1]; e.b += rgba[i + 2]; cnt.set(key, e);
+    }
+    const d = (by * w + bx) * 4;
+    if (op * 2 < k * k) continue;
+    let best = null; for (const e of cnt.values()) if (!best || e.n > best.n) best = e;
+    o[d] = best.r / best.n; o[d + 1] = best.g / best.n; o[d + 2] = best.b / best.n; o[d + 3] = 255;
+  }
+  return o;
+}
 function crisp(rgba, w, h){
   const o = Uint8ClampedArray.from(rgba), inM = (x, y)=>x >= 0 && y >= 0 && x < w && y < h && rgba[(y * w + x) * 4 + 3] > 110;
   const run = (x, y, dx, dy)=>{ let n = 0; while (n < 12 && inM(x + dx * (n + 1), y + dy * (n + 1))) n++; return n; };
@@ -81,10 +97,11 @@ export async function genSprites(){
       // disegno grande poi ridotto: bordi più puliti; i mostri normali più piccoli dei boss
       const cv = document.createElement('canvas'); S.drawMonster(cv, m, 12);
       const size = id.startsWith('boss') ? 64 : 50;
-      const t = document.createElement('canvas'); t.width = 64; t.height = 64; const g = t.getContext('2d');
+      // a 4x: poi ogni blocco 4x4 prende il colore più frequente (bordi netti, niente sfumature da media)
+      const t = document.createElement('canvas'); t.width = 256; t.height = 256; const g = t.getContext('2d');
       g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
-      g.drawImage(cv, (64 - size) / 2, 64 - size, size, size);
-      res.mons[id] = [...g.getImageData(0, 0, 64, 64).data];
+      g.drawImage(cv, (64 - size) * 2, (64 - size) * 4, size * 4, size * 4);
+      res.mons[id] = [...g.getImageData(0, 0, 256, 256).data];
     }
     for (const [id, c] of Object.entries(chars)){ const cv = document.createElement('canvas'); S.drawPortrait(cv, c); res.portraits[id] = grab(cv, 32, 32); }
     // titolo: notte sul Sacro Monte, il lago di Varese sotto la luna, scritta dorata in rilievo
@@ -125,7 +142,7 @@ export async function genSprites(){
   let c = '';
   const preview = [];
   for (const id of MON_IDS){
-    const { img, pal } = quantize(crisp(out.mons[id], 64, 64), 64, 64);
+    const { img, pal } = quantize(crisp(modeDown(out.mons[id], 256, 4), 64, 64), 64, 64);
     c += cArray('u16', `MON_GFX_${cname(id)}`, toTiles(img, 8, 8), 16) + cArray('u16', `MON_PAL_${cname(id)}`, pal.map(rgb15));
     preview.push({ img, pal });
   }
