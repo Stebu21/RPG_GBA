@@ -7,6 +7,7 @@
 #include "world.h"
 
 void titleBackground(void){
+  REG_DISPCNT &= ~DCNT_BG(2);                    // niente livello dei tetti: i suoi tile verrebbero sovrascritti
   memcpy16(CHARBLOCK(1), TITLE_TILES, TITLE_NTILES * 16);
   memcpy16(MEM_PAL_BG + 8 * 16, TITLE_PAL, TITLE_NPAL * 16);
   u16 *sb = SCREENBLOCK(28);
@@ -26,13 +27,13 @@ static int chooseHero(void){
     "Ste, il Mago: alto, calmo e ironico. Magie potenti, meno resistente.",
     "Riki, il Samurai: basso e massiccio, katana Shura. Colpi fisici devastanti." };
   for (int k = 0; k < 2; k++){
-    memcpy16(OBJ_TILES + (256 + k * 8) * 16, LOOKS[CHARS[ID[k]].look].tiles, 128);
+    memcpy16(OBJ_TILES + (256 + k * 32) * 16, LOOKS[CHARS[ID[k]].look].big, 512);
     for (int c = 0; c < 16; c++) MEM_PAL_OBJ[(4 + k) * 16 + c] = LOOKS[CHARS[ID[k]].look].pal[c];
   }
   setAffine(0, 0x80, 0, 0, 0x80);
   int sel = 0, shown = -1;
   for (;;){
-    for (int k = 0; k < 2; k++) oamSet(4 + k, 56 + k * 96, 36 + (k == sel ? -((frameCount >> 3) & 1) * 2 : 0), OBJ_TALL | OBJ_DOUBLE, OBJ_SIZE(2), (256 + k * 8) | OBJ_PAL(4 + k));
+    for (int k = 0; k < 2; k++) oamSet(4 + k, 56 + k * 96, 36 + (k == sel ? -((frameCount >> 3) & 1) * 2 : 0), OBJ_TALL, OBJ_SIZE(3), (256 + k * 32) | OBJ_PAL(4 + k));
     cursorAt(52 + sel * 96, 108);
     if (shown != sel){
       shown = sel; winClear(w);

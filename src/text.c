@@ -65,9 +65,10 @@ void winClose(Win *w){
 void winCloseAll(void){ for (int i = 0; i < 8; i++) if (wins[i].used) winClose(&wins[i]); poolTop = POOL0; memset16(SCREENBLOCK(TXT_SB), 0, 1024); }
 void winRect(Win *w, int x, int y, int ww, int hh, int c){ for (int j = 0; j < hh; j++) for (int i = 0; i < ww; i++) pset(w, x + i, y + j, c); }
 
-int textWidth(const char *s){ int x = 0; for (; *s; s++){ u8 c = *s; if (c == '\n') break; x += (c == ' ' ? 3 : FONT_W[c]) + 1; } return x; }
+int textWidth(const char *s){ int x = 0; for (; *s; s++){ u8 c = *s; if (c == '\n') break; if (c == 0xC3) continue; x +=(c == ' ' ? 3 : FONT_W[c]) + 1; } return x; }
 static int glyph(Win *w, int x, int y, u8 c, int color){
   if (c == ' ') return 4;
+  if (c == 0xC3) return 0;                      // primo byte di una lettera accentata in UTF-8
   int gw = FONT_W[c];
   for (int r = 0; r < 9; r++){ u16 bits = FONT_ROWS[c][r]; for (int i = 0; i < gw; i++) if (bits & (1 << i)) pset(w, x + i + 1, y + r + 1, TC_SHADOW); }
   for (int r = 0; r < 9; r++){ u16 bits = FONT_ROWS[c][r]; for (int i = 0; i < gw; i++) if (bits & (1 << i)) pset(w, x + i, y + r, color); }
@@ -94,7 +95,7 @@ static int wrap(const char *s, int width, const char **starts, u8 *lens, int max
     while (*s == ' ') s++;
     const char *line = s, *lastSpace = 0; int x = 0;
     while (*s && *s != '\n'){
-      int cw = (*s == ' ' ? 3 : FONT_W[(u8)*s]) + 1;
+      int cw = (u8)*s == 0xC3 ? 0 : (*s == ' ' ? 3 : FONT_W[(u8)*s]) + 1;
       if (x + cw > width){ if (lastSpace){ s = lastSpace; } break; }
       if (*s == ' ') lastSpace = s;
       x += cw; s++;

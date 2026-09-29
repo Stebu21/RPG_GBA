@@ -46,6 +46,25 @@ export function quantize(rgba, w, h, outline=true, ncol=14){
   while (full.length < 16) full.push([0, 0, 0]);
   return { img, pal:full };
 }
+// mostri più "da GBA": alfa netto, colori più saturi, luce dall'alto a sinistra e ombra verso il basso a destra
+// (a cuscino, secondo la distanza dal bordo della sagoma), filo scuro interno sul lato in ombra
+function crisp(rgba, w, h){
+  const o = Uint8ClampedArray.from(rgba), inM = (x, y)=>x >= 0 && y >= 0 && x < w && y < h && rgba[(y * w + x) * 4 + 3] > 110;
+  const run = (x, y, dx, dy)=>{ let n = 0; while (n < 12 && inM(x + dx * (n + 1), y + dy * (n + 1))) n++; return n; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){
+    const i = (y * w + x) * 4;
+    if (!inM(x, y)){ o[i + 3] = 0; continue; }
+    o[i + 3] = 255;
+    const tl = run(x, y, -1, -1), br = run(x, y, 1, 1), up = run(x, y, 0, -1), dn = run(x, y, 0, 1);
+    let f = 1 + 0.16 * Math.max(-1, Math.min(1, (br - tl) / (br + tl + 1))) + 0.06 * Math.max(-1, Math.min(1, (dn - up) / (dn + up + 1)));
+    if (br === 0 || dn === 0) f *= 0.72; else if (br === 1) f *= 0.86;
+    if (tl === 0 && up <= 1) f *= 1.12;
+    let r = rgba[i] * f, g = rgba[i + 1] * f, b = rgba[i + 2] * f;
+    const m = (r + g + b) / 3; r = m + (r - m) * 1.2; g = m + (g - m) * 1.2; b = m + (b - m) * 1.2;
+    o[i] = r; o[i + 1] = g; o[i + 2] = b;
+  }
+  return o;
+}
 const toTiles = (img, tw, th)=>{ const out = []; for (let ty = 0; ty < th; ty++) for (let tx = 0; tx < tw; tx++){ const b = img.tile4(tx, ty); for (let k = 0; k < 32; k += 2) out.push(b[k] | (b[k + 1] << 8)); } return out; };
 
 export async function genSprites(){
@@ -106,7 +125,7 @@ export async function genSprites(){
   let c = '';
   const preview = [];
   for (const id of MON_IDS){
-    const { img, pal } = quantize(out.mons[id], 64, 64);
+    const { img, pal } = quantize(crisp(out.mons[id], 64, 64), 64, 64);
     c += cArray('u16', `MON_GFX_${cname(id)}`, toTiles(img, 8, 8), 16) + cArray('u16', `MON_PAL_${cname(id)}`, pal.map(rgb15));
     preview.push({ img, pal });
   }

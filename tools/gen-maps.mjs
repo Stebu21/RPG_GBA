@@ -84,6 +84,18 @@ export function genMaps(){
 export const CHESTS = [];
 
 // sprite dei personaggi: 9 fotogrammi 16x32 (72 tile, in ordine 1D: ogni fotogramma 2x4 tile)
+// Scale2x (EPX): raddoppia la pixel art arrotondando le diagonali invece di fare quadrettoni
+function scale2x(img){
+  const o = new Img(img.w * 2, img.h * 2);
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++){
+    const P = img.get(x, y), A = img.get(x, y - 1), B = img.get(x + 1, y), Cc = img.get(x - 1, y), D = img.get(x, y + 1);
+    o.set(x * 2, y * 2, Cc === A && Cc !== D && A !== B ? A : P);
+    o.set(x * 2 + 1, y * 2, A === B && A !== Cc && B !== D ? B : P);
+    o.set(x * 2, y * 2 + 1, D === Cc && D !== B && Cc !== A ? Cc : P);
+    o.set(x * 2 + 1, y * 2 + 1, B === D && B !== A && D !== Cc ? D : P);
+  }
+  return o;
+}
 export function genLooks(){
   let c = '', list = [];
   LOOK_LIST.forEach((l, i)=>{
@@ -91,7 +103,14 @@ export function genLooks(){
     const data = [];
     for (const f of frames) for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 2; tx++){ const b = f.tile4(tx, ty); for (let k = 0; k < 32; k += 2) data.push(b[k] | (b[k + 1] << 8)); }
     c += cArray('u16', `LOOK_GFX_${i}`, data, 16) + cArray('u16', `LOOK_PAL_${i}`, pal.map(rgb15));
-    list.push(`{ LOOK_GFX_${i}, LOOK_PAL_${i} }`);
+    // eroi: fotogrammi 32x64 per la battaglia e la scelta (di fronte, di lato, di lato col passo), ingranditi con Scale2x
+    let big = 'NULL';
+    if (CHAR_IDS.includes(l.key)){
+      const bd = [];
+      for (const f of [frames[0], frames[6], frames[7]]){ const b2 = scale2x(f); for (let ty = 0; ty < 8; ty++) for (let tx = 0; tx < 4; tx++){ const b = b2.tile4(tx, ty); for (let k = 0; k < 32; k += 2) bd.push(b[k] | (b[k + 1] << 8)); } }
+      c += cArray('u16', `LOOK_BIG_${i}`, bd, 16); big = `LOOK_BIG_${i}`;
+    }
+    list.push(`{ LOOK_GFX_${i}, LOOK_PAL_${i}, ${big} }`);
   });
   c += `const Look LOOKS[] = { ${list.join(', ')} };\nconst u8 NUM_LOOKS = ${LOOK_LIST.length};\n`;
   return c;

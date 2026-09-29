@@ -35,7 +35,7 @@ extern const u8 NUM_MAPS;
 extern const u16 BG_PALETTES[1][16];   // tavolozza dell'interfaccia
 
 // ---------- personaggi e sprite ----------
-typedef struct { const u16 *tiles; const u16 *pal; } Look;   // 9 fotogrammi 16x32 (72 tile)
+typedef struct { const u16 *tiles; const u16 *pal; const u16 *big; } Look;   // 9 fotogrammi 16x32 (72 tile); eroi: 3 fotogrammi 32x64 (32 tile)
 extern const Look LOOKS[];
 extern const u8 NUM_LOOKS;
 typedef struct { s16 hp, mp, atk, def, mag, spr, spd; } Stats;

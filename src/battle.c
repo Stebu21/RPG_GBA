@@ -23,11 +23,12 @@ static void cat(char *d, const char *s){ while (*d) d++; while ((*d++ = *s++)); 
 static void catn(char *d, int n){ char b[12]; cat(d, fmtNum(b, n)); }
 
 #define EN_TILE(i) (64 + (i) * 64)
-#define AL_TILE(i) (256 + (i) * 8)
-#define DIGIT_TILE 320
+#define AL_TILE(i) (256 + (i) * 32)
+#define DIGIT_TILE 400
 
 // ---------- grafica ----------
-static void loadHeroFrame(int k, int f){ memcpy16(OBJ_TILES + AL_TILE(k) * 16, LOOKS[CHARS[al[k].id].look].tiles + f * 128, 128); }
+// fotogrammi 32x64 degli eroi: 0 di fronte, 6 di lato, 7 di lato col passo (come i fotogrammi 16x32 della mappa)
+static void loadHeroFrame(int k, int f){ memcpy16(OBJ_TILES + AL_TILE(k) * 16, LOOKS[CHARS[al[k].id].look].big + (f == 0 ? 0 : f == 7 ? 2 : 1) * 512, 512); }
 // cifre del danno: disegnate con il font in tile OBJ (bianco con bordo scuro)
 static void buildDigits(void){
   u16 *base = OBJ_TILES + DIGIT_TILE * 16;
@@ -51,8 +52,9 @@ static void drawUnits(void){
   }
   for (int k = 0; k < MAX_PARTY; k++){
     if (k >= nal || al[k].hidden){ oamBuf[4 + k].a0 = OBJ_HIDE; continue; }
-    // sprite 16x32 raddoppiato con la matrice affine 0 (KO: steso di lato con la matrice 1)
-    oamSet(4 + k, al[k].x, al[k].y, OBJ_TALL | OBJ_DOUBLE, OBJ_SIZE(2) | ((al[k].alive ? 0 : 1) << 9), AL_TILE(k) | OBJ_PAL(4 + k) | OBJ_PRIO(1));
+    // sprite 32x64; KO: steso di lato con la matrice affine 1 (riquadro doppio, centrato più in basso)
+    if (al[k].alive) oamSet(4 + k, al[k].x, al[k].y, OBJ_TALL, OBJ_SIZE(3), AL_TILE(k) | OBJ_PAL(4 + k) | OBJ_PRIO(1));
+    else oamSet(4 + k, al[k].x - 16, al[k].y - 16, OBJ_TALL | OBJ_DOUBLE, OBJ_SIZE(3) | (1 << 9), AL_TILE(k) | OBJ_PAL(4 + k) | OBJ_PRIO(1));
   }
 }
 static void popNumber(int x, int y, int n, int heal){
@@ -83,12 +85,16 @@ static void drawPanel(int active){
   for (int k = 0; k < nal; k++){
     Unit *u = &al[k]; int y = 2 + k * 11;
     winText(panel, 4, y, CHARS[u->id].name, k == active ? TC_BLUE : u->alive ? TC_TEXT : TC_RED);
-    int w = u->maxhp ? 34 * u->hp / u->maxhp : 0;
-    winRect(panel, 40, y + 3, 36, 5, TC_GRAY);
-    winRect(panel, 41, y + 4, w, 3, u->hp * 5 < u->maxhp ? TC_RED : u->hp * 2 < u->maxhp ? TC_GOLD : TC_GREEN);
-    winNum(panel, 100, y, u->hp, TC_TEXT, 1);
-    winText(panel, 104, y, "MP", TC_GRAY);
-    winNum(panel, 134, y, u->mp, TC_BLUE, 1);
+    // barra dei PV come nei giochi GBA: etichetta, cornice scura, fondo chiaro, riempimento con un filo di luce
+    int w = u->maxhp ? 36 * u->hp / u->maxhp : 0;
+    winText(panel, 36, y, "HP", TC_GOLD);
+    winRect(panel, 50, y + 2, 40, 7, TC_NAVY);
+    winRect(panel, 52, y + 3, 36, 5, TC_SHADOW);
+    winRect(panel, 52, y + 3, w, 5, u->hp * 5 < u->maxhp ? TC_RED : u->hp * 2 < u->maxhp ? TC_GOLD : TC_GREEN);
+    if (w > 2) winRect(panel, 52, y + 3, w - 1, 1, TC_WHITE);
+    winNum(panel, 116, y, u->hp, TC_TEXT, 1);
+    winText(panel, 120, y, "MP", TC_GRAY);
+    winNum(panel, 143, y, u->mp, TC_BLUE, 1);
     if (u->status == 1) winText(panel, 4, y, "*", TC_PURPLE);
     if (u->status == 2) winText(panel, 4, y, "z", TC_BLUE);
   }
@@ -352,7 +358,7 @@ int battleRun(const u8 *mons, int n, int boss, int backdrop){
   }
   // matrici affini: 0 = doppia grandezza, 1 = doppia e ruotata (KO)
   setAffine(0, 0x80, 0, 0, 0x80);
-  setAffine(1, 0, 0x80, -0x80, 0);
+  setAffine(1, 0, 0x100, -0x100, 0);
   // tavolozza 8 degli sprite: cifre verdi per le cure
   for (int c = 0; c < 16; c++) MEM_PAL_OBJ[8 * 16 + c] = OBJ_UI_PAL[c];
   MEM_PAL_OBJ[8 * 16 + 4] = RGB15(12, 31, 12);

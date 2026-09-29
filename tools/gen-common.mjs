@@ -42,6 +42,8 @@ export function fontTables(){
   const W = new Array(256).fill(0), R = Array.from({ length:256 }, ()=>new Array(9).fill(0));
   const put = (c, gl)=>{ const rows = gl.split('|'); W[c] = rows[0].length; rows.forEach((r, y)=>{ let b = 0; [...r].forEach((p, x)=>{ if (p === '#') b |= 1 << x; }); R[c][y] = b; }); };
   for (const [ch, gl] of Object.entries(GLYPHS)){ const e = EXTRA.indexOf(ch); if (e >= 0) put(128 + e, gl); else if (ch.length === 1 && ch.charCodeAt(0) < 127) put(ch.charCodeAt(0), gl); }
+  // accenti scritti in UTF-8 nel codice C ("Abilità"): 0xC3 non si disegna, il secondo byte è la lettera
+  for (const ch of 'àèéìòù'){ const b = Buffer.from(ch, 'utf8')[1]; W[b] = W[128 + EXTRA.indexOf(ch)]; R[b] = R[128 + EXTRA.indexOf(ch)].slice(); }
   return `const u8 FONT_W[256] = { ${W.join(',')} };\nconst u16 FONT_ROWS[256][9] = {\n${R.map(r=>'  {' + r.join(',') + '}').join(',\n')}\n};\n`;
 }
 

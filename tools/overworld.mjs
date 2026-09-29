@@ -280,10 +280,10 @@ export function paintMap(id, m, frame=0, info={}){
     const p = brush(cx, cy, 1, 1), X = cx * 16, Y = cy * 16;
     // sul bordo alto della mappa la chioma scende nella casella (altrimenti resterebbe tagliata)
     const off = at(cx, cy - 1) === '' ? 7 : 0;
-    const lobes = [[8, -8.5, 5.6], [3.8, -3.5, 4.3], [12.2, -3.5, 4.3], [8, -2.5, 5.2], [3.6, 3, 3.9], [12.4, 3, 3.9], [8, 4, 4.6]].map(([x, y, r])=>[x, Math.min(y + off, 11.5 - r * 0.6), r]);
+    const lobes = [[8, -5.5, 5.4], [3.8, -1, 4.3], [12.2, -1, 4.3], [8, 0, 5.2], [3.6, 4.5, 3.7], [12.4, 4.5, 3.7], [8, 5.5, 4.2]].map(([x, y, r])=>[x, Math.min(y + off, 11.5 - r * 0.6), r]);
     // ombra per terra e tronco
     for (let y = 12; y < 16; y++) for (let x = 1; x < 15; x++) if (((x - 8) / 6.5) ** 2 + ((y - 13.5) / 2.3) ** 2 <= 1) shadeGround(X + x, Y + y);
-    for (let y = 7; y < 15; y++) for (let x = 6; x < 10; x++) p(X + x, Y + y, x === 6 ? C.wd3 : x === 9 ? C.wd5 : C.wd4);
+    for (let y = 8; y < 15; y++) for (let x = 6; x < 10; x++) p(X + x, Y + y, x === 6 ? C.wd3 : x === 9 ? C.wd5 : C.wd4);
     p(X + 5, Y + 14, C.wd5); p(X + 10, Y + 14, C.wd5); for (let x = 5; x < 11; x++) p(X + x, Y + 15, C.ol1);
     const can = new Map();
     for (const [lx, ly, r] of lobes){
@@ -331,12 +331,12 @@ export function paintMap(id, m, frame=0, info={}){
   }
   function drawLamp(cx, cy){
     const p = brush(cx, cy, 1, 1), X = cx * 16, Y = cy * 16;
-    for (let y = -10; y < 14; y++){ p(X + 7, Y + y, C.mt1); p(X + 8, Y + y, C.mt2); }
+    for (let y = -2; y < 14; y++){ p(X + 7, Y + y, C.mt1); p(X + 8, Y + y, C.mt2); }
     for (let x = 5; x < 11; x++){ p(X + x, Y + 13, C.mt2); p(X + x, Y + 14, C.mt3); } p(X + 6, Y + 12, C.mt1); p(X + 9, Y + 12, C.mt2);
     // lanterna
     const lan = ['..oooo..', '.oyyyyo.', 'oyWWyyyo', 'oyWyyyyo', 'oyyyyyyo', '.oyyyyo.', '..oooo..', '...oo...'];
-    lan.forEach((r, j)=>[...r].forEach((ch, i)=>{ if (ch !== '.') p(X + 4 + i, Y - 18 + j, ch === 'o' ? C.mt3 : ch === 'W' ? C.li0 : C.li1); }));
-    for (let x = 5; x < 11; x++) p(X + x, Y - 19, C.mt2);
+    lan.forEach((r, j)=>[...r].forEach((ch, i)=>{ if (ch !== '.') p(X + 4 + i, Y - 10 + j, ch === 'o' ? C.mt3 : ch === 'W' ? C.li0 : C.li1); }));
+    for (let x = 5; x < 11; x++) p(X + x, Y - 11, C.mt2);
     for (let y = 14; y < 16; y++) for (let x = 4; x < 12; x++) if (gget(X + x, Y + y) === C.g2) gset(X + x, Y + y, C.g3);
   }
   function drawBench(cx, cy){
@@ -430,7 +430,9 @@ export function paintMap(id, m, frame=0, info={}){
     const wk = kind === 'palazzo' ? 'ochre' : kind === 'shop' ? 'white' : kind === 'inn' ? 'cream' : ['cream', 'pink', 'white'][(b.seed >> 1) % 3];
     const Wl = i=>C['w_' + wk + i];
     // tetto da -16 a 8 (sale di una casella sopra l'impronta), facciata da 8 in giù: i bordi cadono sui tile
-    const roofTop = -16, roofBot = 8;
+    // se appena sopra c'è la porta di un altro edificio, il tetto sporge poco: chi esce da lì resta visibile
+    let crowded = false; for (let x = x0; x <= x1; x++) if (BUILD.has(at(x, y0 - 2))) crowded = true;
+    const roofTop = crowded ? -6 : -16, roofBot = 8;
     // ombra a terra a destra dell'edificio
     for (let y = 2; y < Hp; y++) for (let x = Wp; x < Wp + 2; x++) shadeGround(X + x, Y + y);
     // ---- facciata (rientrata di un pixel sotto la gronda) ----
@@ -477,7 +479,7 @@ export function paintMap(id, m, frame=0, info={}){
       p(X + x, Y + y, c);
     }
     // comignolo (sul tetto, non sopra: non copre il giocatore più di così)
-    if (kind === 'house' || kind === 'inn'){
+    if ((kind === 'house' || kind === 'inn') && !crowded){
       const cxp = X + Wp - 16 - (b.seed % 2) * 16 + 4;
       for (let y = -14; y < -5; y++) for (let x = 0; x < 6; x++) p(cxp + x, Y + y, y === -14 || x === 0 || x === 5 ? R(4) : y === -13 ? R(0) : y === -6 ? R(3) : x < 3 ? R(1) : R(2));
     }

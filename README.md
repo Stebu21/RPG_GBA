@@ -4,6 +4,7 @@ ROM per GBA del gioco web *The Menace of Eterna ~ Chronicles of Varese* (cartell
 stessa trama, stessi personaggi, mostri, abilità, oggetti e dialoghi, con grafica e giocabilità da GBA.
 
 ![titolo](docs/titolo.png) ![Varese](docs/varese.png) ![battaglia](docs/battaglia.png)
+![Vedano](docs/vedano.png) ![negozio](docs/negozio.png) ![Sacro Monte](docs/sacromonte.png)
 
 ## Giocare
 
@@ -26,6 +27,20 @@ della trama (o l'uscita da prendere per arrivarci). Il salvataggio va sulla SRAM
 - Battaglie a turni con mostri e boss, abilità, combo Ste + Riki, mosse Limite, stati e debolezze,
   livelli, alleati che si uniscono (Pasq, Fabri, Elly, Vero, Mirko, Sofy), negozi, locande, missioni, forzieri.
 - Musiche originali a due voci ed effetti sonori sui canali del GBA.
+
+## Grafica
+
+Lo stile è quello di Pokémon Rubino/Zaffiro. Ogni mappa è disegnata come un'unica immagine a colori pieni da
+`tools/overworld.mjs`: terreni con bordi morbidi, alberi alti due caselle, case con tetto e facciata, chiese,
+torri, acqua animata e interni arredati. `tools/gba-convert.mjs` la riduce in tile 8x8 senza doppioni, anche
+specchiati, con al massimo 15 tavolozze di 15 colori assegnate tile per tile. Tetti e chiome finiscono sul livello
+BG2, sopra gli sprite, così i personaggi ci passano dietro. Gli stessi strumenti producono gli sfondi di battaglia
+(`tools/battlebg.mjs`) e il titolo.
+
+I personaggi (`tools/chars.mjs`) sono modelli 16x32 con luce e ombra e un contorno automatico; in battaglia
+sono ingranditi a 32x64 con Scale2x.
+
+`node tools/preview-maps.mjs varese 1 1` salva in `build/` un'anteprima grande quanto lo schermo, senza compilare.
 
 ## Compilare
 
